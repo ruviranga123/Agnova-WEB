@@ -1,0 +1,2519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AGNOWA | Smart Autonomous Planting & Crop Guide</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter & Noto Sans Sinhala & JetBrains Mono -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+Sinhala:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'Noto Sans Sinhala', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        agnowa: {
+                            50: '#ecfdf5',
+                            100: '#d1fae5',
+                            500: '#10b981',
+                            600: '#059669',
+                            700: '#047857',
+                            900: '#064e3b',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #f8fafc;
+            color: #0f172a;
+        }
+        .canvas-grid-bg {
+            background-color: #0f172a;
+            background-image: 
+                linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+            body {
+                background-color: #ffffff;
+            }
+            .print-full {
+                width: 100% !important;
+                max-width: 100% !important;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-emerald-500 selection:text-white">
+
+    <!-- Top Navigation Header -->
+    <header class="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-30 shadow-md no-print">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                    <i class="fa-solid fa-seedling text-white text-lg"></i>
+                </div>
+                <div>
+                    <div class="flex items-center space-x-2">
+                        <span class="text-xl font-extrabold tracking-tight text-white">AGNOWA</span>
+                        <span class="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-full">v1.4 Smart Agri-AI</span>
+                    </div>
+                    <p class="text-xs text-slate-400 hidden sm:block">Autonomous Planting, Weather-Smart Irrigation & Crop Care System</p>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-2 sm:space-x-3">
+                <div class="hidden xl:flex items-center space-x-2 bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700 text-xs text-slate-300">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span>Return-Row Planting + 90° U-Turn</span>
+                </div>
+                <button onclick="copyFarmerReport()" class="text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 rounded-lg transition flex items-center space-x-1.5 shadow-sm" title="Copy Farmer Plan Summary">
+                    <i id="summary-copy-icon" class="fa-solid fa-share-nodes"></i>
+                    <span id="summary-copy-text" class="hidden sm:inline">Copy Field Sheet</span>
+                </button>
+                <button onclick="window.print()" class="text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-2 rounded-lg border border-slate-700 transition flex items-center space-x-1.5" title="Print Field Sheet">
+                    <i class="fa-solid fa-print text-slate-400"></i>
+                    <span class="hidden md:inline">Print</span>
+                </button>
+                <button onclick="resetDefaults()" class="text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-2 rounded-lg border border-slate-700 transition flex items-center space-x-1.5" title="Reset to default">
+                    <i class="fa-solid fa-rotate-left text-slate-400"></i>
+                    <span class="hidden sm:inline">Reset</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Grid -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+            <!-- LEFT COLUMN: Crop Presets, Weather, Field Inputs & Arduino Code (5 cols) -->
+            <div class="lg:col-span-5 space-y-6">
+
+                <!-- 1. Crop Selection & Auto-Fill Card -->
+                <section class="bg-white rounded-2xl shadow-sm border border-emerald-200/90 overflow-hidden">
+                    <div class="px-5 py-3.5 border-b border-emerald-100 bg-gradient-to-r from-emerald-50 to-teal-50/60 flex items-center justify-between">
+                        <div class="flex items-center space-x-2.5">
+                            <div class="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center shadow-sm">
+                                <i class="fa-solid fa-leaf text-sm"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-sm font-bold text-slate-800">1. Select Seedling / Crop Type</h2>
+                                <p class="text-[11px] text-emerald-700 font-medium">තවාන් පැළ වර්ගය තෝරන්න (පරතරය සහ ජලය Auto-Fill වේ)</p>
+                            </div>
+                        </div>
+                        <span id="preset-badge" class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                            Auto-Fill Active
+                        </span>
+                    </div>
+
+                    <div class="p-4 space-y-3">
+                        <!-- Quick Visual Crop Buttons Grid -->
+                        <div class="grid grid-cols-3 sm:grid-cols-3 gap-2" id="crop-preset-grid">
+                            <!-- Populated dynamically by JS -->
+                        </div>
+
+                        <!-- Selected Crop Quick Spec Strip -->
+                        <div id="crop-quick-strip" class="rounded-xl bg-slate-50 border border-slate-200/80 p-3 flex items-center justify-between text-xs">
+                            <div class="flex items-center space-x-2.5">
+                                <span id="selected-crop-emoji" class="text-2xl">🌶️</span>
+                                <div>
+                                    <div class="font-bold text-slate-800" id="selected-crop-title">මිරිස් (Chilli - MI-2 / Galkiriyagama)</div>
+                                    <div class="text-[11px] text-slate-500" id="selected-crop-subtitle">Auto-set: 45cm × 60cm | 15ml initial water</div>
+                                </div>
+                            </div>
+                            <a href="#crop-care-section" class="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-200 transition whitespace-nowrap">
+                                රැකබලා ගැනීම <i class="fa-solid fa-arrow-down ml-1"></i>
+                            </a>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 2. Today's Weather Condition & Smart Rain Cutoff Card -->
+                <section class="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
+                    <div class="px-5 py-3.5 border-b border-slate-100 bg-slate-50/70 flex flex-wrap items-center justify-between gap-2">
+                        <div class="flex items-center space-x-2.5">
+                            <div class="w-8 h-8 rounded-lg bg-sky-100 text-sky-600 flex items-center justify-center">
+                                <i class="fa-solid fa-cloud-sun-rain text-sm"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-sm font-bold text-slate-800">2. Today's Weather Condition</h2>
+                                <p class="text-[11px] text-slate-500">අද දින කාලගුණ තත්ත්වය (වැසි නම් ජලය දැමීම ස්වයංක්‍රීයව නවතී)</p>
+                            </div>
+                        </div>
+
+                        <!-- Live Location Weather Fetch -->
+                        <div class="flex items-center space-x-1.5">
+                            <select id="weather-city-select" onchange="fetchLiveWeather()" class="text-[11px] font-semibold bg-white border border-slate-200 rounded-lg px-2 py-1 text-slate-700 outline-none focus:border-sky-500">
+                                <option value="manual">Manual / අතින් තේරීම</option>
+                                <option value="6.84,80.00">Homagama (හෝමාගම)</option>
+                                <option value="6.93,79.85">Colombo (කොළඹ)</option>
+                                <option value="8.31,80.40">Anuradhapura (අනුරාධපුර)</option>
+                                <option value="7.29,80.63">Kandy (මහනුවර)</option>
+                                <option value="6.95,80.78">Nuwara Eliya (නුවරඑළිය)</option>
+                                <option value="7.48,80.36">Kurunegala (කුරුණෑගල)</option>
+                                <option value="6.12,81.12">Hambantota (හම්බන්තොට)</option>
+                                <option value="9.66,80.02">Jaffna (යාපනය)</option>
+                            </select>
+                            <button onclick="fetchLiveWeather()" id="btn-refresh-weather" class="p-1.5 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 text-xs transition" title="Check Live Weather">
+                                <i class="fa-solid fa-arrows-rotate"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="p-4 space-y-3">
+                        <!-- Weather Mode Buttons -->
+                        <div class="grid grid-cols-3 gap-2">
+                            <button type="button" id="weather-sunny" onclick="setWeatherCondition('sunny')" class="p-2.5 rounded-xl border-2 border-amber-400 bg-amber-50/70 text-slate-900 flex flex-col items-center justify-center transition shadow-sm">
+                                <i class="fa-solid fa-sun text-amber-500 text-lg mb-1"></i>
+                                <span class="text-xs font-bold">අව්ව සහිත</span>
+                                <span class="text-[10px] text-slate-500">Sunny / Dry</span>
+                            </button>
+
+                            <button type="button" id="weather-cloudy" onclick="setWeatherCondition('cloudy')" class="p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 flex flex-col items-center justify-center transition">
+                                <i class="fa-solid fa-cloud-sun text-slate-500 text-lg mb-1"></i>
+                                <span class="text-xs font-bold">වළාකුළු සහිත</span>
+                                <span class="text-[10px] text-slate-500">Cloudy / Cool</span>
+                            </button>
+
+                            <button type="button" id="weather-rainy" onclick="setWeatherCondition('rainy')" class="p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-blue-50/50 text-slate-700 flex flex-col items-center justify-center transition">
+                                <i class="fa-solid fa-cloud-showers-heavy text-blue-600 text-lg mb-1"></i>
+                                <span class="text-xs font-bold">වර්ෂා සහිත</span>
+                                <span class="text-[10px] text-slate-500">Rainy (No Water)</span>
+                            </button>
+                        </div>
+
+                        <!-- Live API Telemetry Info Strip -->
+                        <div id="live-weather-info" class="hidden text-[11px] text-slate-600 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200/70 flex items-center justify-between">
+                            <span id="live-weather-desc"><i class="fa-solid fa-satellite-dish text-sky-500 mr-1"></i> Live weather loaded</span>
+                            <span id="live-weather-temp" class="font-mono font-bold text-slate-800">--°C</span>
+                        </div>
+
+                        <!-- Rainy Weather Override Alert Banner -->
+                        <div id="rain-override-banner" class="hidden rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-3.5 shadow-md shadow-blue-500/20">
+                            <div class="flex items-start space-x-3">
+                                <div class="w-9 h-9 rounded-lg bg-white/20 flex items-center justify-center shrink-0 mt-0.5">
+                                    <i class="fa-solid fa-cloud-rain text-lg"></i>
+                                </div>
+                                <div>
+                                    <div class="flex items-center space-x-2">
+                                        <span class="text-xs font-extrabold uppercase tracking-wide bg-white/20 px-2 py-0.5 rounded">Smart Rain Mode Active</span>
+                                    </div>
+                                    <p class="text-xs font-bold mt-1 leading-snug">
+                                        වර්ෂා සහිත කාලගුණයක් පවතින බැවින් පැළ සිටුවීමේදී අමතර ජලය දැමීම අවශ්‍ය නොවේ.
+                                    </p>
+                                    <p class="text-[11px] text-blue-100 mt-0.5">
+                                        Rain detected: Robot water pump is automatically set to <b>0 ml (0 sec)</b> to save water & battery.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 3. Field & Spacing Configuration Card -->
+                <section class="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
+                    <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between bg-slate-50/60">
+                        <div class="flex items-center space-x-2.5">
+                            <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                                <i class="fa-solid fa-ruler-combined text-sm"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-sm font-bold text-slate-800">3. Field & Spacing Parameters</h2>
+                                <p class="text-[11px] text-slate-500">වගා බිමේ දිග, පළල සහ පැළ අතර පරතරය</p>
+                            </div>
+                        </div>
+
+                        <!-- Unit Toggle (cm / m) -->
+                        <div class="inline-flex rounded-lg bg-slate-200/80 p-0.5 text-xs font-semibold">
+                            <button id="unit-cm" onclick="setUnit('cm')" class="px-2.5 py-1 rounded-md bg-white text-emerald-700 shadow-sm transition">cm</button>
+                            <button id="unit-m" onclick="setUnit('m')" class="px-2.5 py-1 rounded-md text-slate-600 hover:text-slate-900 transition">meters</button>
+                        </div>
+                    </div>
+
+                    <div class="p-5 space-y-4">
+                        <!-- Field Dimensions -->
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">
+                                    Field / Row Length <span class="text-slate-400 font-normal">(දිග)</span>
+                                </label>
+                                <div class="relative">
+                                    <input type="number" id="input-length" value="250" min="10" step="any" oninput="handleInputChange()"
+                                        class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm font-semibold text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition pr-10">
+                                    <span class="unit-label absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">cm</span>
+                                </div>
+                                <p class="text-[10px] text-emerald-600 mt-1">U-Turn ගන්නා පේළියේ ස්ථිර දිග</p>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">
+                                    Field Width <span class="text-slate-400 font-normal">(පළල)</span>
+                                </label>
+                                <div class="relative">
+                                    <input type="number" id="input-width" value="180" min="10" step="any" oninput="handleInputChange()"
+                                        class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm font-semibold text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition pr-10">
+                                    <span class="unit-label absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">cm</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Spacing Inputs (Auto-filled by crop preset, editable) -->
+                        <div class="grid grid-cols-2 gap-4 pt-1">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">
+                                    Linear Spacing <span class="text-slate-400 font-normal">(පැළ පරතරය)</span>
+                                </label>
+                                <div class="relative">
+                                    <input type="number" id="input-plant-spacing" value="45" min="5" step="any" oninput="handleManualSpacingEdit()"
+                                        class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm font-semibold text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition pr-10">
+                                    <span class="unit-label absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">cm</span>
+                                </div>
+                                <p class="text-[10px] text-slate-400 mt-1">රේඛීය මාර්ගයේ පැළ දෙකක් අතර</p>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">
+                                    Row Spacing <span class="text-slate-400 font-normal">(තිරස් පරතරය)</span>
+                                </label>
+                                <div class="relative">
+                                    <input type="number" id="input-row-spacing" value="60" min="5" step="any" oninput="handleManualSpacingEdit()"
+                                        class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm font-semibold text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition pr-10">
+                                    <span class="unit-label absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">cm</span>
+                                </div>
+                                <p class="text-[10px] text-slate-400 mt-1">පේළි දෙකක් අතර තිරස් දුර</p>
+                            </div>
+                        </div>
+
+                        <!-- Target Plant Count & Buzzer Cutoff -->
+                        <div class="pt-3 border-t border-slate-100">
+                            <div class="flex items-center justify-between mb-1">
+                                <label class="block text-xs font-semibold text-slate-700">
+                                    Max Target Plants <span class="text-slate-400 font-normal">(උපරිම පැළ ගණන)</span>
+                                </label>
+                                <button type="button" onclick="fillMaxPlants()" class="text-[11px] font-semibold text-emerald-600 hover:text-emerald-700 underline">
+                                    Use Max (<span id="max-capacity-badge">24</span>)
+                                </button>
+                            </div>
+                            <div class="relative">
+                                <input type="number" id="input-target-plants" value="24" min="1" step="1" oninput="handleInputChange()"
+                                    class="w-full rounded-xl border border-emerald-300 bg-emerald-50/30 px-3.5 py-2.5 text-sm font-bold text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition pr-24">
+                                <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">
+                                    Grid Max: <span id="max-capacity-inline">24</span>
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Water Volume & Pump Calibration Section -->
+                        <div id="water-control-box" class="pt-3 border-t border-slate-100 bg-sky-50/50 -mx-5 px-5 py-3.5 border-b border-sky-100 transition-colors">
+                            <div class="flex items-center justify-between mb-2.5">
+                                <div class="flex items-center space-x-2">
+                                    <div class="w-6 h-6 rounded-md bg-sky-100 text-sky-600 flex items-center justify-center">
+                                        <i class="fa-solid fa-droplet text-xs"></i>
+                                    </div>
+                                    <div>
+                                        <span class="text-xs font-bold text-slate-800 block">Watering & Pump Control</span>
+                                        <span class="text-[10px] text-slate-500">පැළයකට දමන ජල ප්‍රමාණය සහ Pump කාලය</span>
+                                    </div>
+                                </div>
+                                <span id="water-mode-tag" class="text-[10px] font-mono font-semibold text-sky-700 bg-sky-100 px-2 py-0.5 rounded-full">
+                                    1ml = 1s Pump
+                                </span>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 mb-1">
+                                        Water / Plant <span class="text-slate-400 font-normal">(ජලය)</span>
+                                    </label>
+                                    <div class="relative">
+                                        <input type="number" id="input-water-ml" value="15" min="0" step="any" oninput="handleManualWaterEdit()"
+                                            class="w-full rounded-xl border border-sky-200 bg-white px-3 py-2 text-sm font-bold text-slate-900 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 outline-none transition pr-9">
+                                        <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-sky-600">ml</span>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 mb-1">
+                                        Pump Flow Rate <span class="text-slate-400 font-normal">(වේගය)</span>
+                                    </label>
+                                    <div class="relative">
+                                        <input type="number" id="input-flow-rate" value="1.0" min="0.1" step="0.1" oninput="handleInputChange()"
+                                            class="w-full rounded-xl border border-sky-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 outline-none transition pr-14">
+                                        <span class="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] font-medium text-slate-400">ml/sec</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- First U-Turn Direction -->
+                        <div class="pt-1 flex flex-wrap items-center justify-between gap-2">
+                            <div>
+                                <span class="text-xs font-semibold text-slate-700 block">First U-Turn Direction</span>
+                                <span class="text-[10px] text-slate-400">පළමු පේළිය අවසානයේ හැරෙන දිශාව</span>
+                            </div>
+                            <div class="inline-flex rounded-xl bg-slate-100 p-1 border border-slate-200/70">
+                                <button id="turn-right" onclick="setTurnDirection('right')" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 text-white shadow-sm transition flex items-center space-x-1">
+                                    <i class="fa-solid fa-turn-down"></i>
+                                    <span>Right (දකුණ)</span>
+                                </button>
+                                <button id="turn-left" onclick="setTurnDirection('left')" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition flex items-center space-x-1">
+                                    <i class="fa-solid fa-turn-up"></i>
+                                    <span>Left (වම)</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Validation Warning Message Box -->
+                        <div id="validation-alert" class="hidden rounded-xl bg-amber-50 border border-amber-200 p-3 text-xs text-amber-800 flex items-start space-x-2">
+                            <i class="fa-solid fa-triangle-exclamation text-amber-500 mt-0.5"></i>
+                            <span id="validation-text">Please enter valid positive dimensions.</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 4. Arduino Uno Auto-Code Generator Card -->
+                <section class="bg-slate-900 rounded-2xl shadow-lg border border-slate-800 overflow-hidden text-white no-print">
+                    <div class="px-5 py-3.5 border-b border-slate-800 flex items-center justify-between bg-slate-950/50">
+                        <div class="flex items-center space-x-2.5">
+                            <div class="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 flex items-center justify-center">
+                                <i class="fa-solid fa-microchip text-sm"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-sm font-bold text-white">Arduino Uno Config Snippet</h2>
+                                <p class="text-[11px] text-slate-400">Copy & paste into AGNOWA .ino firmware</p>
+                            </div>
+                        </div>
+
+                        <button id="copy-btn" onclick="copyArduinoCode()" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-semibold transition flex items-center space-x-1.5 shadow-md shadow-emerald-900/50">
+                            <i id="copy-icon" class="fa-regular fa-copy"></i>
+                            <span id="copy-text">Copy Code</span>
+                        </button>
+                    </div>
+
+                    <div class="p-4 relative">
+                        <pre id="arduino-code-block" class="font-mono text-xs leading-relaxed text-emerald-300 overflow-x-auto bg-slate-950/80 p-3.5 rounded-xl border border-slate-800/90"></pre>
+                    </div>
+                </section>
+
+            </div>
+
+            <!-- RIGHT COLUMN: KPI Metrics, 2D Visualizer, Farmer Calculators & Crop Care Guide (7 cols) -->
+            <div class="lg:col-span-7 space-y-6 print-full">
+
+                <!-- 1. Real-Time Summary KPI Cards -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+                    <div class="bg-gradient-to-br from-emerald-600 to-emerald-700 rounded-2xl p-4 text-white shadow-md shadow-emerald-600/15 relative overflow-hidden">
+                        <div class="absolute -right-3 -bottom-3 opacity-15 text-5xl">
+                            <i class="fa-solid fa-seedling"></i>
+                        </div>
+                        <p class="text-xs font-medium text-emerald-100">Target / Max Cap</p>
+                        <p class="text-[10px] text-emerald-200/90 mb-1">සිටුවන / උපරිම පැළ</p>
+                        <div class="flex items-baseline space-x-1.5">
+                            <span id="stat-target-plants" class="text-3xl font-extrabold tracking-tight">24</span>
+                            <span class="text-xs font-medium text-emerald-200">/ <span id="stat-max-plants">24</span></span>
+                        </div>
+                    </div>
+
+                    <div id="kpi-pump-card" class="bg-gradient-to-br from-sky-600 to-blue-700 rounded-2xl p-4 text-white shadow-md shadow-sky-600/15 relative overflow-hidden transition-all">
+                        <div class="absolute -right-2 -bottom-2 opacity-15 text-5xl">
+                            <i class="fa-solid fa-faucet-drip"></i>
+                        </div>
+                        <p class="text-xs font-medium text-sky-100">Pump Time / Plant</p>
+                        <p class="text-[10px] text-sky-200/90 mb-1">පැළයකට Pump කාලය</p>
+                        <div class="flex items-baseline space-x-1.5">
+                            <span id="stat-pump-sec" class="text-2xl font-extrabold tracking-tight">15.0s</span>
+                            <span id="stat-pump-ms" class="text-[11px] font-mono text-sky-200">(15000ms)</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-sm">
+                        <p class="text-xs font-semibold text-slate-500">Total Water Needed</p>
+                        <p class="text-[10px] text-slate-400 mb-1">මුළු ජල අවශ්‍යතාව</p>
+                        <div class="flex items-baseline space-x-1.5">
+                            <span id="stat-total-water-ml" class="text-2xl font-extrabold text-sky-600">360</span>
+                            <span class="text-xs font-semibold text-slate-500">ml</span>
+                            <span id="stat-total-water-l" class="text-[11px] text-slate-400">(0.36L)</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-sm">
+                        <p class="text-xs font-semibold text-slate-500">Grid & Travel Path</p>
+                        <p class="text-[10px] text-slate-400 mb-1">පේළි සහ ගමන් දුර</p>
+                        <div class="flex items-baseline space-x-1.5">
+                            <span id="stat-grid-dims" class="text-xl font-extrabold text-slate-800">6×4</span>
+                            <span id="stat-distance" class="text-xs font-semibold text-emerald-600 ml-1">11.8m</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Buzzer Alert Banner -->
+                <div id="buzzer-alert-banner" class="hidden rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 text-white p-4 shadow-lg shadow-amber-500/20 flex items-center justify-between no-print">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center animate-bounce">
+                            <i class="fa-solid fa-bell text-xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-extrabold tracking-wide uppercase">Buzzer Activated! Mission Completed</h3>
+                            <p id="buzzer-alert-desc" class="text-xs text-amber-50">All target seedlings planted safely.</p>
+                        </div>
+                    </div>
+                    <button onclick="dismissBuzzerBanner()" class="px-3 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-xs font-bold transition">
+                        Dismiss
+                    </button>
+                </div>
+
+                <!-- 2. Interactive 2D Field Map & Robot Simulation Visualizer -->
+                <section class="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden flex flex-col">
+                    <div class="px-5 py-3.5 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3 bg-slate-50/70">
+                        <div>
+                            <div class="flex items-center space-x-2">
+                                <h2 class="text-sm font-bold text-slate-800">Live Field Grid & AGNOWA Path Map</h2>
+                                <span id="sim-status-badge" class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-slate-200 text-slate-600">READY</span>
+                            </div>
+                            <p class="text-[11px] text-slate-500">Outward Row &rarr; 90° U-Turn &rarr; Return Row Planting</p>
+                        </div>
+
+                        <div class="flex items-center space-x-2 no-print">
+                            <button id="btn-play-sim" onclick="toggleSimulation()" class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-bold shadow-sm transition flex items-center space-x-1.5">
+                                <i id="sim-play-icon" class="fa-solid fa-play"></i>
+                                <span id="sim-play-text">Simulate Robot</span>
+                            </button>
+                            <button onclick="resetSimulation()" class="p-2 rounded-xl bg-slate-200/80 hover:bg-slate-300/80 text-slate-700 text-xs font-semibold transition" title="Reset Simulation">
+                                <i class="fa-solid fa-arrow-rotate-left"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Responsive Canvas Container -->
+                    <div id="canvas-wrapper" class="relative w-full h-[360px] sm:h-[400px] canvas-grid-bg overflow-hidden select-none">
+                        <canvas id="fieldCanvas" class="block w-full h-full"></canvas>
+
+                        <!-- Live Telemetry Overlay Pill (Bottom Left) -->
+                        <div class="absolute bottom-3 left-3 bg-slate-900/90 backdrop-blur-md border border-slate-700/80 rounded-xl px-3.5 py-2 text-xs text-white flex flex-wrap items-center gap-3 sm:gap-4 shadow-lg max-w-[85%]">
+                            <div>
+                                <span class="text-[10px] text-slate-400 block uppercase tracking-wider">Planted</span>
+                                <span class="font-mono font-bold text-emerald-400"><span id="live-planted-count">0</span> / <span id="live-total-target">24</span></span>
+                            </div>
+                            <div class="h-6 w-px bg-slate-700"></div>
+                            <div>
+                                <span class="text-[10px] text-slate-400 block uppercase tracking-wider">Water Used</span>
+                                <span class="font-mono font-bold text-sky-400"><span id="live-water-used">0</span> ml</span>
+                            </div>
+                            <div class="h-6 w-px bg-slate-700 hidden sm:block"></div>
+                            <div>
+                                <span class="text-[10px] text-slate-400 block uppercase tracking-wider">Robot Status</span>
+                                <span id="live-robot-action" class="font-medium text-slate-200">Idle at Start (0,0)</span>
+                            </div>
+                        </div>
+
+                        <!-- Speed Selector (Bottom Right) -->
+                        <div class="absolute bottom-3 right-3 bg-slate-900/90 backdrop-blur-md border border-slate-700/80 rounded-xl px-2.5 py-1.5 text-[11px] text-slate-300 flex items-center space-x-1.5 no-print">
+                            <span class="text-slate-400">Speed:</span>
+                            <button onclick="setSimSpeed(1)" id="spd-1" class="px-1.5 py-0.5 rounded bg-emerald-600 text-white font-bold">1x</button>
+                            <button onclick="setSimSpeed(2.5)" id="spd-2" class="px-1.5 py-0.5 rounded hover:bg-slate-800 text-slate-300 font-semibold">2.5x</button>
+                        </div>
+                    </div>
+
+                    <!-- Map Legend Footer -->
+                    <div class="px-5 py-2.5 bg-slate-50 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-600">
+                        <div class="flex flex-wrap items-center gap-4">
+                            <div class="flex items-center space-x-1.5">
+                                <span class="w-3 h-3 rounded-full bg-emerald-500 inline-block ring-2 ring-sky-400"></span>
+                                <span>Planted & Watered</span>
+                            </div>
+                            <div class="flex items-center space-x-1.5">
+                                <span class="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span>
+                                <span>Planted (Rain / Dry)</span>
+                            </div>
+                            <div class="flex items-center space-x-1.5">
+                                <span class="w-3 h-3 rounded-full border-2 border-dashed border-emerald-400 inline-block"></span>
+                                <span>Planned Target</span>
+                            </div>
+                            <div class="flex items-center space-x-1.5">
+                                <span class="w-5 h-0.5 bg-amber-400 inline-block"></span>
+                                <span>90° Row Shift</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 3. Farmer Nursery & Logistics Helper Cards (තවාන් සහ ටැංකි ගණනය) -->
+                <section class="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                    <!-- Nursery Tray Calculator -->
+                    <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-sm">
+                        <div class="flex items-center space-x-2 text-emerald-700 mb-1.5">
+                            <i class="fa-solid fa-table-cells text-sm"></i>
+                            <h3 class="text-xs font-bold uppercase tracking-wide">තවාන් තැටි (Nursery Trays)</h3>
+                        </div>
+                        <p class="text-lg font-extrabold text-slate-900" id="helper-trays-50">1 Tray (50-cell)</p>
+                        <p class="text-[11px] text-slate-500 mt-1" id="helper-buffer-seedlings">
+                            +10% අමතර පැළ: <b>27 seedlings</b> තවාන් කරන්න (පාළු සිටුවීමට).
+                        </p>
+                    </div>
+
+                    <!-- Water Tank Refill Estimator -->
+                    <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-sm">
+                        <div class="flex items-center space-x-2 text-sky-600 mb-1.5">
+                            <i class="fa-solid fa-fill-drip text-sm"></i>
+                            <h3 class="text-xs font-bold uppercase tracking-wide">ජල ටැංකිය (5L Tank)</h3>
+                        </div>
+                        <p class="text-lg font-extrabold text-slate-900" id="helper-tank-refills">1 Tank (7% Full)</p>
+                        <p class="text-[11px] text-slate-500 mt-1" id="helper-tank-note">
+                            5L රොබෝ ටැංකිය එක් වරක් පිරවීම ප්‍රමාණවත් වේ.
+                        </p>
+                    </div>
+
+                    <!-- Estimated Field Time -->
+                    <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-sm">
+                        <div class="flex items-center space-x-2 text-amber-600 mb-1.5">
+                            <i class="fa-solid fa-stopwatch text-sm"></i>
+                            <h3 class="text-xs font-bold uppercase tracking-wide">ඇස්තමේන්තු කාලය</h3>
+                        </div>
+                        <p class="text-lg font-extrabold text-slate-900" id="helper-est-time">~7 mins</p>
+                        <p class="text-[11px] text-slate-500 mt-1" id="helper-area-sqm">
+                            වගා බිම් වර්ගඵලය: <b>4.50 m²</b>
+                        </p>
+                    </div>
+                </section>
+
+                <!-- 4. Comprehensive Crop Care & Harvest Guide (පැළ සිටුවීමේ සිට අස්වනු නෙළන තෙක් රැකබලා ගැනීම) -->
+                <section id="crop-care-section" class="bg-white rounded-2xl shadow-sm border border-emerald-200/90 overflow-hidden">
+                    <div class="px-5 py-4 border-b border-emerald-100 bg-gradient-to-r from-emerald-900 to-teal-900 text-white flex flex-wrap items-center justify-between gap-2">
+                        <div class="flex items-center space-x-3">
+                            <span id="care-header-emoji" class="text-2xl bg-white/10 w-10 h-10 rounded-xl flex items-center justify-center">🌶️</span>
+                            <div>
+                                <div class="flex items-center space-x-2">
+                                    <h2 id="care-crop-name" class="text-base font-extrabold">මිරිස් (Chilli) - වගා උපදෙස්</h2>
+                                    <span id="care-harvest-badge" class="px-2.5 py-0.5 text-[11px] font-bold rounded-full bg-amber-400 text-slate-950">
+                                        අස්වැන්න: දින 65 - 75
+                                    </span>
+                                </div>
+                                <p class="text-xs text-emerald-200">පැළ සිටුවීමේ සිට අස්වැන්න නෙළන තෙක් රැකබලා ගත යුතු ආකාරය</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-[10px] uppercase tracking-wider text-emerald-300 block">අපේක්ෂිත අස්වැන්න</span>
+                            <span id="care-expected-yield" class="text-xs font-bold text-white">ගසකින් 400g - 600g</span>
+                        </div>
+                    </div>
+
+                    <div class="p-5 space-y-4">
+                        <!-- 4-Stage Care Grid -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <!-- Watering Guide -->
+                            <div class="rounded-xl bg-sky-50/70 border border-sky-100 p-4">
+                                <div class="flex items-center space-x-2 text-sky-800 font-bold text-xs mb-1.5">
+                                    <i class="fa-solid fa-droplet text-sky-600"></i>
+                                    <span>1. ජල සම්පාදනය (Watering Schedule)</span>
+                                </div>
+                                <p id="care-watering-text" class="text-xs text-slate-700 leading-relaxed"></p>
+                            </div>
+
+                            <!-- Fertilizer Guide -->
+                            <div class="rounded-xl bg-emerald-50/70 border border-emerald-100 p-4">
+                                <div class="flex items-center space-x-2 text-emerald-800 font-bold text-xs mb-1.5">
+                                    <i class="fa-solid fa-flask-vial text-emerald-600"></i>
+                                    <span>2. පොහොර යෙදීම (Fertilizer Schedule)</span>
+                                </div>
+                                <p id="care-fertilizer-text" class="text-xs text-slate-700 leading-relaxed"></p>
+                            </div>
+
+                            <!-- Pest & Disease Protection -->
+                            <div class="rounded-xl bg-amber-50/70 border border-amber-100 p-4">
+                                <div class="flex items-center space-x-2 text-amber-800 font-bold text-xs mb-1.5">
+                                    <i class="fa-solid fa-shield-virus text-amber-600"></i>
+                                    <span>3. පළිබෝධ හා රෝග පාලනය (Pest & Disease)</span>
+                                </div>
+                                <p id="care-pest-text" class="text-xs text-slate-700 leading-relaxed"></p>
+                            </div>
+
+                            <!-- Harvest & Post-Harvest Tips -->
+                            <div class="rounded-xl bg-purple-50/70 border border-purple-100 p-4">
+                                <div class="flex items-center space-x-2 text-purple-800 font-bold text-xs mb-1.5">
+                                    <i class="fa-solid fa-basket-shopping text-purple-600"></i>
+                                    <span>4. අස්වනු නෙළීම සහ විශේෂ උපදෙස් (Harvesting)</span>
+                                </div>
+                                <p id="care-harvest-text" class="text-xs text-slate-700 leading-relaxed"></p>
+                            </div>
+                        </div>
+
+                        <!-- Timeline Progress Bar -->
+                        <div class="pt-2 border-t border-slate-100">
+                            <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-2">වගා කාලසටහන (Growth Timeline)</span>
+                            <div id="care-timeline-steps" class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                                <!-- Populated dynamically -->
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 5. Planting Calendar & Reminder Export (.ICS / WhatsApp Summary) -->
+                <section id="planting-calendar-section" class="bg-white rounded-2xl shadow-sm border border-emerald-200/90 overflow-hidden">
+                    <div class="px-5 py-4 border-b border-emerald-100 bg-gradient-to-r from-slate-900 via-emerald-950 to-teal-950 text-white flex flex-wrap items-center justify-between gap-3">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 flex items-center justify-center shrink-0">
+                                <i class="fa-solid fa-calendar-check text-base"></i>
+                            </div>
+                            <div>
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <h2 class="text-base font-extrabold">Planting Calendar & Reminders</h2>
+                                    <span class="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full bg-emerald-500/25 text-emerald-200 border border-emerald-400/30">
+                                        .ICS & WhatsApp
+                                    </span>
+                                </div>
+                                <p class="text-xs text-emerald-200">පැළ සිටුවන දිනය අනුව රැකබලා ගැනීමේ සහ අස්වනු මතක් කිරීම් (Calendar & WhatsApp)</p>
+                            </div>
+                        </div>
+
+                        <!-- Planting Start Date Picker -->
+                        <div class="flex items-center space-x-2 bg-slate-900/80 border border-slate-700/90 rounded-xl px-3 py-1.5">
+                            <label for="input-planting-date" class="text-[11px] font-semibold text-emerald-200 whitespace-nowrap">
+                                සිටුවන දිනය:
+                            </label>
+                            <input type="date" id="input-planting-date" oninput="handleCalendarDateChange()"
+                                class="bg-transparent text-xs font-mono font-bold text-white outline-none cursor-pointer">
+                        </div>
+                    </div>
+
+                    <div class="p-5 space-y-5">
+                        <!-- Action Buttons Row: Download .ICS, Share WhatsApp, Copy & Edit -->
+                        <div class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-100 no-print">
+                            <div class="flex flex-wrap items-center gap-2.5">
+                                <button type="button" onclick="downloadIcsCalendar()"
+                                    class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-bold shadow-sm shadow-emerald-600/20 transition flex items-center space-x-2">
+                                    <i class="fa-solid fa-calendar-plus"></i>
+                                    <span>Download .ICS Reminders</span>
+                                </button>
+
+                                <button type="button" onclick="shareWhatsAppSummary()"
+                                    class="px-4 py-2.5 rounded-xl bg-[#25D366] hover:bg-[#1ebe5d] active:scale-95 text-slate-950 text-xs font-extrabold shadow-sm transition flex items-center space-x-2">
+                                    <i class="fa-brands fa-whatsapp text-base"></i>
+                                    <span>Share on WhatsApp</span>
+                                </button>
+                            </div>
+
+                            <div class="flex items-center space-x-2">
+                                <button type="button" onclick="toggleWhatsAppEditor()"
+                                    class="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition flex items-center space-x-1.5">
+                                    <i class="fa-solid fa-pen-to-square"></i>
+                                    <span id="wa-edit-toggle-label">Preview / Edit WhatsApp</span>
+                                </button>
+                                <button type="button" onclick="copyWhatsAppSummary()"
+                                    class="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold transition flex items-center space-x-1.5">
+                                    <i id="wa-copy-icon" class="fa-regular fa-copy"></i>
+                                    <span id="wa-copy-label">Copy Msg</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Calendar Compatibility & Feedback Notice -->
+                        <div class="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500 bg-slate-50 border border-slate-200/70 rounded-xl px-3.5 py-2.5">
+                            <div class="flex items-center space-x-2">
+                                <i class="fa-solid fa-mobile-screen-button text-emerald-600"></i>
+                                <span>
+                                    <b>.ICS File Support:</b> Works directly with <b>Android Calendar, iPhone / iOS Calendar, Google Calendar,</b> and <b>Outlook / Windows / Mac</b> with morning reminders.
+                                </span>
+                            </div>
+                            <span id="ics-status-feedback" class="font-semibold text-emerald-700"></span>
+                        </div>
+
+                        <!-- Collapsible / Expandable WhatsApp Summary Preview & Editor -->
+                        <div id="whatsapp-summary-panel" class="hidden rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4 space-y-2.5">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-bold text-slate-800 flex items-center space-x-1.5">
+                                    <i class="fa-brands fa-whatsapp text-[#1ebe5d] text-sm"></i>
+                                    <span>WhatsApp Summary Message (සැකසිය හැක / Editable)</span>
+                                </span>
+                                <button type="button" onclick="rebuildWhatsAppMessage(true)" class="text-[11px] font-semibold text-emerald-700 hover:underline">
+                                    Reset to Auto-Summary
+                                </button>
+                            </div>
+                            <textarea id="whatsapp-summary-textarea" rows="11" oninput="handleWhatsAppManualEdit()"
+                                class="w-full rounded-xl border border-slate-300 bg-white p-3 text-xs font-sans text-slate-800 leading-relaxed focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition"></textarea>
+                        </div>
+
+                        <!-- Generated Planting Milestones Timeline -->
+                        <div>
+                            <div class="flex items-center justify-between mb-3">
+                                <h3 class="text-xs font-bold uppercase tracking-wider text-slate-600">
+                                    Generated Care & Harvest Milestones (<span id="milestone-crop-label">මිරිස්</span>)
+                                </h3>
+                                <span id="milestone-harvest-summary" class="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full">
+                                    <!-- Populated dynamically -->
+                                </span>
+                            </div>
+
+                            <div id="planting-milestones-list" class="space-y-2.5">
+                                <!-- Populated dynamically -->
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- Application Logic -->
+    <script>
+        // --- Comprehensive Sri Lankan Nursery Crop Database ---
+        const CROP_PRESETS = {
+            chilli: {
+                id: 'chilli',
+                emoji: '🌶️',
+                siName: 'මිරිස්',
+                enName: 'Chilli',
+                variety: 'MI-2 / Galkiriyagama',
+                plantSpacingCm: 45,
+                rowSpacingCm: 60,
+                waterMl: 15,
+                harvestDays: 'දින 65 - 75 (Days)',
+                harvestStartDay: 65,
+                harvestPeakDay: 72,
+                establishmentDay: 10,
+                fertilizerDay: 21,
+                floweringDay: 42,
+                yieldPerPlant: 'ගසකින් 400g - 600g',
+                wateringGuide: 'පැළ සිටුවා පළමු දින 10 තුළ දිනපතා උදේ සහ සවස තෙතමනය රැකෙන සේ ජලය දමන්න. මල් පිපෙන අවධියේදී දින 2කට වරක් ජලය සපයන්න. වැසි දිනවල ජලය දැමීම නවතන්න.',
+                fertilizerGuide: 'මූලික පොහොර: කාබනික පොහොර (කොම්පෝස්ට්) වළකට 500g. සති 2, 4, සහ 6 දී යූරියා, TSP සහ MOP නිර්දේශිත මාත්‍රාව යොදන්න. මල් හටගන්නා විට පොටෑසියම් වැඩි පොහොර යොදන්න.',
+                pestGuide: 'කොළ කොඩවීමේ රෝගය (Leaf Curl) සඳහා සුදු මැස්සන් සහ පැළ මැක්කන් පාලනයට කොහොඹ තෙල් (Neem Oil) සතිපතා ඉසින්න. පසේ ජලය බැස යාම හොඳින් සකසන්න.',
+                harvestGuide: 'පැළ සිටුවා දින 65කින් පමණ තද කොළ පැහැති කරල් නෙළීම ආරම්භ කළ හැක. දින 5-7කට වරක් අස්වැන්න නෙළීමෙන් නව මල් හටගැනීම වේගවත් වේ.',
+                timeline: [
+                    { stage: 'දින 1 - 14', label: 'මුල් ඇදීම සහ සෙවන' },
+                    { stage: 'දින 15 - 35', label: 'වර්ධක අවධිය & පොහොර' },
+                    { stage: 'දින 36 - 55', label: 'මල් හා කරල් හටගැනීම' },
+                    { stage: 'දින 65+', label: 'අස්වනු නෙළීම ආරම්භය' }
+                ]
+            },
+            tomato: {
+                id: 'tomato',
+                emoji: '🍅',
+                siName: 'තක්කාලි',
+                enName: 'Tomato',
+                variety: 'Thilina / Padma',
+                plantSpacingCm: 50,
+                rowSpacingCm: 80,
+                waterMl: 20,
+                harvestDays: 'දින 60 - 70 (Days)',
+                harvestStartDay: 60,
+                harvestPeakDay: 68,
+                establishmentDay: 10,
+                fertilizerDay: 21,
+                floweringDay: 38,
+                yieldPerPlant: 'ගසකින් 1.5kg - 2.5kg',
+                wateringGuide: 'පැළ සිටුවූ විගස 20ml බැගින් ජලය දමන්න. ගෙඩි හටගන්නා අවධියේදී ඒකාකාරීව ජලය සැපයීමෙන් ගෙඩි පිපිරීම (Blossom End Rot) වළක්වා ගත හැක.',
+                fertilizerGuide: 'පැළ සිටුවීමට දින 2කට පෙර කොම්පෝස්ට් යොදන්න. සති 3කින් පසු NPK පොහොර සහ කැල්සියම් අඩංගු පොහොර යෙදීමෙන් ගුණාත්මක ගෙඩි ලැබේ.',
+                pestGuide: 'පසු අංගමාරය (Late Blight) වැළැක්වීමට පහළ වියළි කොළ ඉවත් කරන්න. ගෙඩි විදින පණුවන් සඳහා ෆෙරමෝන් උගුල් භාවිතා කරන්න.',
+                harvestGuide: 'සති 3කදී ගස්වලට ආධාරක කෝටු සිටුවන්න (Staking). ගෙඩිවල අග කොටස රතු/කහ පැහැයට හැරෙන විට නෙළා ගන්න.',
+                timeline: [
+                    { stage: 'දින 1 - 12', label: 'පැළ ස්ථාපනය' },
+                    { stage: 'දින 20 - 25', label: 'ආධාරක කෝටු සිටුවීම' },
+                    { stage: 'දින 30 - 45', label: 'මල් පිපීම සහ ගෙඩි' },
+                    { stage: 'දින 60+', label: 'අස්වනු නෙළීම' }
+                ]
+            },
+            brinjal: {
+                id: 'brinjal',
+                emoji: '🍆',
+                siName: 'වම්බටු',
+                enName: 'Brinjal',
+                variety: 'Amanda / Lena Iri',
+                plantSpacingCm: 60,
+                rowSpacingCm: 90,
+                waterMl: 25,
+                harvestDays: 'දින 65 - 80 (Days)',
+                harvestStartDay: 65,
+                harvestPeakDay: 75,
+                establishmentDay: 12,
+                fertilizerDay: 21,
+                floweringDay: 45,
+                yieldPerPlant: 'ගසකින් 1.5kg - 3.0kg',
+                wateringGuide: 'පැළ සිටුවා පළමු සතිය තුළ දිනපතා ජලය දමන්න. ඉන්පසු පසේ තෙතමනය අනුව දින 2-3කට වරක් ජලය සැපයීම ප්‍රමාණවත් වේ.',
+                fertilizerGuide: 'කාබනික පොහොර බහුලව යොදන්න. සති 3, 6 සහ 9 දී මතුපිට පොහොර යොදා පස් ලං කරන්න (Earthing up).',
+                pestGuide: 'කරටි සහ ගෙඩි විදින පණුවා (Shoot & Fruit Borer) පාලනයට හානි වූ කරටි කපා විනාශ කරන්න. කොහොඹ නිස්සාරකය ඉසින්න.',
+                harvestGuide: 'කරල් මෘදු හා දිලිසෙන සුළු මට්ටමේ පවතින විට (ඇට මේරීමට පෙර) නටුව සමඟ කපා අස්වැන්න නෙළන්න.',
+                timeline: [
+                    { stage: 'දින 1 - 15', label: 'පැළ ස්ථාපනය' },
+                    { stage: 'දින 21 - 40', label: 'අතු බෙදීම & පස් ලං කිරීම' },
+                    { stage: 'දින 45 - 60', label: 'මල් හා කරල් වර්ධනය' },
+                    { stage: 'දින 65+', label: 'දිගුකාලීන අස්වැන්න' }
+                ]
+            },
+            cabbage: {
+                id: 'cabbage',
+                emoji: '🥬',
+                siName: 'ගෝවා',
+                enName: 'Cabbage',
+                variety: 'Green Coronet / Exotic',
+                plantSpacingCm: 40,
+                rowSpacingCm: 50,
+                waterMl: 15,
+                harvestDays: 'දින 70 - 85 (Days)',
+                harvestStartDay: 70,
+                harvestPeakDay: 80,
+                establishmentDay: 10,
+                fertilizerDay: 18,
+                floweringDay: 45,
+                yieldPerPlant: 'ගෙඩියක් 1.0kg - 1.8kg',
+                wateringGuide: 'ගෝවා ගෙඩි එතෙන (Head formation) අවධියේදී නොකඩවා තෙතමනය තබා ගැනීම ඉතා වැදගත් වේ. ජලය හිඟ වුවහොත් ගෙඩි කුඩා වේ.',
+                fertilizerGuide: 'නයිට්‍රජන් සහ පොටෑසියම් සමබරව යොදන්න. සති 2 සහ සති 5 දී මතුපිට පොහොර යොදා පස් එකතු කරන්න.',
+                pestGuide: 'දියමන්ති පිටැති සලබයා (Diamondback Moth) සහ කියත් පණුවන් පාලනයට ක්ෂේත්‍රය වල් පැළෑටි වලින් තොරව තබා ගන්න.',
+                harvestGuide: 'ගෝවා ගෙඩිය තද ගතියට පත් වූ පසු පිටත කොළ කිහිපයක් සමඟ කපා අස්වැන්න නෙළා ගන්න.',
+                timeline: [
+                    { stage: 'දින 1 - 15', label: 'මුල් ඇදීම' },
+                    { stage: 'දින 16 - 40', label: 'පත්‍ර වර්ධනය' },
+                    { stage: 'දින 41 - 65', label: 'ගෙඩි එතීම (Head)' },
+                    { stage: 'දින 70+', label: 'අස්වනු නෙළීම' }
+                ]
+            },
+            capsicum: {
+                id: 'capsicum',
+                emoji: '🫑',
+                siName: 'මාළු මිරිස්',
+                enName: 'Capsicum',
+                variety: 'CA-8 / Hungarian Yellow',
+                plantSpacingCm: 40,
+                rowSpacingCm: 60,
+                waterMl: 15,
+                harvestDays: 'දින 60 - 70 (Days)',
+                harvestStartDay: 60,
+                harvestPeakDay: 68,
+                establishmentDay: 10,
+                fertilizerDay: 21,
+                floweringDay: 38,
+                yieldPerPlant: 'ගසකින් 600g - 900g',
+                wateringGuide: 'ජලය රැඳී නොසිටින සේ දින 2කට වරක් ජලය දමන්න. අධික ජලය නිසා මුල් කුණුවීමේ රෝගය වැළඳිය හැක.',
+                fertilizerGuide: 'සති 2කට වරක් දියර පොහොර හෝ කැට පොහොර ස්වල්පය බැගින් යොදන්න. මැග්නීසියම් සහ කැල්සියම් යෙදීමෙන් කරල් විශාල වේ.',
+                pestGuide: 'කූඩිත්තන් සහ මයිටාවන් පාලනයට පත්‍ර යටි පැත්තට ජලය හෝ කොහොඹ තෙල් ඉසින්න.',
+                harvestGuide: 'කරල් හොඳින් වැඩී තද කොළ හෝ කහ පැහැයට පත් වූ විට නෙළා ගන්න.',
+                timeline: [
+                    { stage: 'දින 1 - 14', label: 'පැළ ස්ථාපනය' },
+                    { stage: 'දින 15 - 32', label: 'ශාක වර්ධනය' },
+                    { stage: 'දින 33 - 55', label: 'මල් සහ කරල්' },
+                    { stage: 'දින 60+', label: 'අස්වනු නෙළීම' }
+                ]
+            },
+            okra: {
+                id: 'okra',
+                emoji: '🌿',
+                siName: 'බණ්ඩක්කා',
+                enName: 'Okra',
+                variety: 'MI-5 / Haritha',
+                plantSpacingCm: 45,
+                rowSpacingCm: 60,
+                waterMl: 15,
+                harvestDays: 'දින 45 - 55 (Days)',
+                harvestStartDay: 45,
+                harvestPeakDay: 52,
+                establishmentDay: 8,
+                fertilizerDay: 20,
+                floweringDay: 32,
+                yieldPerPlant: 'ගසකින් 500g - 800g',
+                wateringGuide: 'ඉතා ඉක්මනින් අස්වනු ලැබෙන බෝගයකි. පැළ සිටුවා දින 30න් මල් පිපෙන බැවින් පස වියළීමට නොදී ජලය සපයන්න.',
+                fertilizerGuide: 'මූලික පොහොර සමඟ සති 3දී මතුපිට පොහොර යොදන්න. අධික නයිට්‍රජන් යෙදීමෙන් කොළ පමණක් වැඩි විය හැක.',
+                pestGuide: 'කහ විචිත්‍ර වෛරස් රෝගය (Yellow Vein Mosaic) වැළඳුණු ගස් වහාම ගලවා ඉවත් කරන්න.',
+                harvestGuide: 'දින 45-50න් පසු සෑම දින 2කට වරක්ම ළපටි කරල් නෙළා ගන්න. කරල් මේරීමට ඉඩ නොදෙන්න.',
+                timeline: [
+                    { stage: 'දින 1 - 10', label: 'මුල් ඇදීම' },
+                    { stage: 'දින 11 - 28', label: 'වේගවත් වර්ධනය' },
+                    { stage: 'දින 29 - 44', label: 'මල් පිපීම' },
+                    { stage: 'දින 45+', label: 'දින 2කට වරක් අස්වැන්න' }
+                ]
+            },
+            maize: {
+                id: 'maize',
+                emoji: '🌽',
+                siName: 'බඩඉරිඟු',
+                enName: 'Maize',
+                variety: 'Bhadra / Sampath',
+                plantSpacingCm: 30,
+                rowSpacingCm: 60,
+                waterMl: 20,
+                harvestDays: 'දින 75 - 95 (Days)',
+                harvestStartDay: 75,
+                harvestPeakDay: 90,
+                establishmentDay: 10,
+                fertilizerDay: 21,
+                floweringDay: 48,
+                yieldPerPlant: 'ගසකින් කරල් 1 - 2',
+                wateringGuide: 'මල් පිපෙන (Tasseling) සහ කරල් පිරෙන අවධියේදී ජලය අත්‍යවශ්‍ය වේ. වැසි සමයේදී අමතර ජලය අවශ්‍ය නොවේ.',
+                fertilizerGuide: 'සති 3දී යූරියා මතුපිට පොහොර යොදා ගස් මුලට පස් ලං කරන්න.',
+                pestGuide: 'සේනා දළඹුවා (Fall Armyworm) පාලනයට පැළ අවධියේ සිට ගොබය පරීක්ෂා කරන්න.',
+                harvestGuide: 'කිරි කරල් සඳහා දින 75න් ද, වියළි ඇට සඳහා දින 95න් ද අස්වනු නෙළා ගත හැක.',
+                timeline: [
+                    { stage: 'දින 1 - 15', label: 'පැළ ස්ථාපනය' },
+                    { stage: 'දින 20 - 40', label: 'කඳ වර්ධනය & පස් ලං කිරීම' },
+                    { stage: 'දින 45 - 65', label: 'මල් හා කරල් පිරීම' },
+                    { stage: 'දින 75+', label: 'අස්වනු නෙළීම' }
+                ]
+            },
+            onion: {
+                id: 'onion',
+                emoji: '🧅',
+                siName: 'ලොකු ළූණු',
+                enName: 'Big Onion',
+                variety: 'Dambulla Red',
+                plantSpacingCm: 15,
+                rowSpacingCm: 30,
+                waterMl: 10,
+                harvestDays: 'දින 80 - 95 (Days)',
+                harvestStartDay: 80,
+                harvestPeakDay: 90,
+                establishmentDay: 10,
+                fertilizerDay: 24,
+                floweringDay: 50,
+                yieldPerPlant: 'ගෙඩියක් 80g - 120g',
+                wateringGuide: 'පැළ සිටුවා මුල් සති 6 තුළ නිතිපතා ජලය දමන්න. අස්වනු නෙළීමට දින 10කට පෙර ජලය දැමීම සම්පූර්ණයෙන් නවතන්න.',
+                fertilizerGuide: 'පොටෑසියම් බහුල පොහොර යෙදීමෙන් ළූණු ගෙඩි හොඳින් විශාල වේ.',
+                pestGuide: 'දම් පැල්ලම් රෝගය (Purple Blotch) සහ පැළ මැක්කන් පාලනයට අවධානය යොමු කරන්න.',
+                harvestGuide: 'ගස්වල පත්‍ර 75%ක් පමණ කඩා වැටුණු පසු ළූණු ගලවා දින කිහිපයක් පවනේ වියළා ගන්න.',
+                timeline: [
+                    { stage: 'දින 1 - 15', label: 'මුල් ඇදීම' },
+                    { stage: 'දින 16 - 45', label: 'පත්‍ර වර්ධනය' },
+                    { stage: 'දින 46 - 75', label: 'අල බැසීම (Bulb)' },
+                    { stage: 'දින 85+', label: 'ජලය නවතා අස්වනු නෙළීම' }
+                ]
+            },
+            custom: {
+                id: 'custom',
+                emoji: '🌱',
+                siName: 'වෙනත් / Custom',
+                enName: 'Custom Crop',
+                variety: 'Manual Parameters',
+                plantSpacingCm: 40,
+                rowSpacingCm: 50,
+                waterMl: 10,
+                harvestDays: 'බෝගය අනුව වෙනස් වේ',
+                harvestStartDay: 60,
+                harvestPeakDay: 70,
+                establishmentDay: 10,
+                fertilizerDay: 21,
+                floweringDay: 40,
+                yieldPerPlant: 'ප්‍රභේදය අනුව',
+                wateringGuide: 'පැළ සිටුවූ පසු පසේ තෙතමනය පරීක්ෂා කර උදේ හෝ සවස ජලය සපයන්න. වර්ෂා දිනවල ජලය දැමීම නවතන්න.',
+                fertilizerGuide: 'පැළ සිටුවීමට පෙර කාබනික පොහොර යොදා, සති 2-3කට වරක් සමබර NPK පොහොර යොදන්න.',
+                pestGuide: 'දිනපතා ක්ෂේත්‍රය පරීක්ෂා කර පළිබෝධ හානි මුල් අවධියේදීම කාබනික ක්‍රම මගින් පාලනය කරන්න.',
+                harvestGuide: 'බෝගයේ පරිණත භාවය අනුව නියමිත අවධියේදී අස්වැන්න නෙළා ගන්න.',
+                timeline: [
+                    { stage: 'අදියර 1', label: 'තවාන් පැළ සිටුවීම' },
+                    { stage: 'අදියර 2', label: 'පොහොර සහ වල් මර්දනය' },
+                    { stage: 'අදියර 3', label: 'මල් හා ඵල හටගැනීම' },
+                    { stage: 'අදියර 4', label: 'අස්වනු නෙළීම' }
+                ]
+            }
+        };
+
+        const state = {
+            selectedCropId: 'chilli',
+            weatherCondition: 'sunny', // 'sunny' | 'cloudy' | 'rainy'
+            savedDryWaterMl: 15,
+            plantingStartDate: getLocalTodayDateString(),
+            milestones: [],
+            customWhatsAppText: '',
+            isWhatsAppEditedManually: false,
+            unit: 'cm',
+            length: 250,
+            width: 180,
+            plantSpacing: 45,
+            rowSpacing: 60,
+            turnDirection: 'right',
+            targetPlantsInput: 24,
+            effectiveTargetPlants: 24,
+            waterPerPlantMl: 15,
+            pumpFlowRateMlPerSec: 1.0,
+            pumpDurationSec: 15,
+            pumpDurationMs: 15000,
+            totalWaterMl: 360,
+            lengthCm: 250,
+            widthCm: 180,
+            plantSpacingCm: 45,
+            rowSpacingCm: 60,
+            plantsPerRow: 6,
+            totalRows: 4,
+            maxCapacityPlants: 24,
+            activeUTurns: 3,
+            totalDistanceCm: 1180,
+            nodes: [],
+            waypoints: [],
+            isSimulating: false,
+            simFinished: false,
+            simSpeed: 1,
+            currentSegmentIndex: 0,
+            segmentProgress: 0,
+            wateringPauseTimer: 0,
+            isWateringNow: false,
+            robotX: 0,
+            robotY: 0,
+            robotAngle: 0,
+            plantedSet: new Set()
+        };
+
+        function getLocalTodayDateString() {
+            const now = new Date();
+            const offsetMs = now.getTimezoneOffset() * 60000;
+            return new Date(now.getTime() - offsetMs).toISOString().split('T')[0];
+        }
+
+        function parseLocalDate(dateStr) {
+            const parts = (dateStr || '').split('-');
+            if (parts.length !== 3) return new Date();
+            const y = parseInt(parts[0], 10);
+            const m = parseInt(parts[1], 10) - 1;
+            const d = parseInt(parts[2], 10);
+            return new Date(y, m, d, 12, 0, 0);
+        }
+
+        function addDaysToDate(baseDate, days) {
+            const result = new Date(baseDate.getTime());
+            result.setDate(result.getDate() + days);
+            return result;
+        }
+
+        function formatDisplayDate(dateObj) {
+            const y = dateObj.getFullYear();
+            const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const d = String(dateObj.getDate()).padStart(2, '0');
+            const weekdaySi = ['ඉරිදා', 'සඳුදා', 'අඟහරුවාදා', 'බදාදා', 'බ්‍රහස්පතින්දා', 'සිකුරාදා', 'සෙනසුරාදා'][dateObj.getDay()];
+            return `${y}-${m}-${d} (${weekdaySi})`;
+        }
+
+        function formatIcsDate(dateObj) {
+            const y = dateObj.getFullYear();
+            const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const d = String(dateObj.getDate()).padStart(2, '0');
+            return `${y}${m}${d}`;
+        }
+
+        const canvas = document.getElementById('fieldCanvas');
+        const ctx = canvas.getContext('2d');
+        let animationFrameId = null;
+        let lastTimestamp = 0;
+
+        function playBuzzerTone() {
+            try {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                if (!AudioCtx) return;
+                const audioCtx = new AudioCtx();
+                const beepTimes = [0, 0.22, 0.44];
+                beepTimes.forEach((offset) => {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(2400, audioCtx.currentTime + offset);
+                    gain.gain.setValueAtTime(0.08, audioCtx.currentTime + offset);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + offset + 0.15);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(audioCtx.currentTime + offset);
+                    osc.stop(audioCtx.currentTime + offset + 0.16);
+                });
+            } catch (e) {
+                console.warn('AudioContext buzzer skipped:', e);
+            }
+        }
+
+        window.addEventListener('load', () => {
+            const dateInput = document.getElementById('input-planting-date');
+            dateInput.value = state.plantingStartDate;
+            renderCropPresetButtons();
+            selectCropPreset('chilli', true);
+            resizeCanvas();
+            startRenderLoop();
+        });
+
+        window.addEventListener('resize', () => {
+            resizeCanvas();
+        });
+
+        function resizeCanvas() {
+            const wrapper = document.getElementById('canvas-wrapper');
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = wrapper.clientWidth * dpr;
+            canvas.height = wrapper.clientHeight * dpr;
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        }
+
+        // --- Render Crop Preset Buttons ---
+        function renderCropPresetButtons() {
+            const grid = document.getElementById('crop-preset-grid');
+            grid.innerHTML = '';
+
+            Object.values(CROP_PRESETS).forEach(crop => {
+                const isSelected = crop.id === state.selectedCropId;
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.onclick = () => selectCropPreset(crop.id, false);
+                btn.className = isSelected
+                    ? 'p-2 rounded-xl border-2 border-emerald-500 bg-emerald-50/90 text-left transition shadow-sm flex items-center space-x-2'
+                    : 'p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 hover:border-emerald-300 text-left transition flex items-center space-x-2';
+
+                btn.innerHTML = `
+                    <span class="text-lg shrink-0">${crop.emoji}</span>
+                    <div class="min-w-0">
+                        <div class="text-xs font-bold text-slate-800 truncate">${crop.siName}</div>
+                        <div class="text-[10px] text-slate-500 truncate">${crop.enName}</div>
+                    </div>
+                `;
+                grid.appendChild(btn);
+            });
+        }
+
+        // --- Select Crop & Auto-Fill Spacing, Water & Care Guide ---
+        function selectCropPreset(cropId, isInitialLoad) {
+            const crop = CROP_PRESETS[cropId] || CROP_PRESETS.custom;
+            state.selectedCropId = crop.id;
+            state.isWhatsAppEditedManually = false;
+            renderCropPresetButtons();
+
+            const factor = state.unit === 'm' ? 0.01 : 1;
+            document.getElementById('input-plant-spacing').value = +(crop.plantSpacingCm * factor).toFixed(3);
+            document.getElementById('input-row-spacing').value = +(crop.rowSpacingCm * factor).toFixed(3);
+
+            state.savedDryWaterMl = crop.waterMl;
+
+            if (state.weatherCondition === 'rainy') {
+                document.getElementById('input-water-ml').value = 0;
+            } else {
+                document.getElementById('input-water-ml').value = crop.waterMl;
+            }
+
+            document.getElementById('selected-crop-emoji').textContent = crop.emoji;
+            document.getElementById('selected-crop-title').textContent = `${crop.siName} (${crop.enName} - ${crop.variety})`;
+            document.getElementById('selected-crop-subtitle').textContent = `Auto-set: ${crop.plantSpacingCm}cm × ${crop.rowSpacingCm}cm | ${crop.waterMl}ml water/plant`;
+
+            const badge = document.getElementById('preset-badge');
+            badge.textContent = crop.id === 'custom' ? 'Manual Mode' : `${crop.siName} Auto-Filled`;
+
+            updateCropCareGuide(crop);
+            recalculateField();
+
+            if (!isInitialLoad) {
+                document.getElementById('input-target-plants').value = state.maxCapacityPlants;
+                recalculateField();
+            }
+            resetSimulation();
+        }
+
+        function updateCropCareGuide(crop) {
+            document.getElementById('care-header-emoji').textContent = crop.emoji;
+            document.getElementById('care-crop-name').textContent = `${crop.siName} (${crop.enName}) - වගා සහ අස්වනු මාර්ගෝපදේශය`;
+            document.getElementById('care-harvest-badge').textContent = `අස්වැන්න: ${crop.harvestDays}`;
+            document.getElementById('care-expected-yield').textContent = crop.yieldPerPlant;
+
+            document.getElementById('care-watering-text').textContent = crop.wateringGuide;
+            document.getElementById('care-fertilizer-text').textContent = crop.fertilizerGuide;
+            document.getElementById('care-pest-text').textContent = crop.pestGuide;
+            document.getElementById('care-harvest-text').textContent = crop.harvestGuide;
+
+            const timelineContainer = document.getElementById('care-timeline-steps');
+            timelineContainer.innerHTML = crop.timeline.map((step, idx) => `
+                <div class="rounded-xl bg-slate-50 border border-slate-200/80 p-2.5">
+                    <span class="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full inline-block mb-1">
+                        ${idx + 1}. ${step.stage}
+                    </span>
+                    <p class="text-xs font-semibold text-slate-800">${step.label}</p>
+                </div>
+            `).join('');
+        }
+
+        // --- Weather Condition & Rain Override Logic ---
+        function setWeatherCondition(condition) {
+            state.weatherCondition = condition;
+
+            const sunnyBtn = document.getElementById('weather-sunny');
+            const cloudyBtn = document.getElementById('weather-cloudy');
+            const rainyBtn = document.getElementById('weather-rainy');
+
+            const baseInactive = 'p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 flex flex-col items-center justify-center transition';
+
+            sunnyBtn.className = condition === 'sunny'
+                ? 'p-2.5 rounded-xl border-2 border-amber-400 bg-amber-50/80 text-slate-900 flex flex-col items-center justify-center transition shadow-sm'
+                : baseInactive;
+
+            cloudyBtn.className = condition === 'cloudy'
+                ? 'p-2.5 rounded-xl border-2 border-slate-400 bg-slate-100 text-slate-900 flex flex-col items-center justify-center transition shadow-sm'
+                : baseInactive;
+
+            rainyBtn.className = condition === 'rainy'
+                ? 'p-2.5 rounded-xl border-2 border-blue-500 bg-blue-50 text-blue-950 flex flex-col items-center justify-center transition shadow-sm'
+                : baseInactive;
+
+            const rainBanner = document.getElementById('rain-override-banner');
+            const waterInput = document.getElementById('input-water-ml');
+            const waterBox = document.getElementById('water-control-box');
+            const waterTag = document.getElementById('water-mode-tag');
+
+            if (condition === 'rainy') {
+                const currentVal = parseFloat(waterInput.value);
+                if (!isNaN(currentVal) && currentVal > 0) {
+                    state.savedDryWaterMl = currentVal;
+                }
+                waterInput.value = 0;
+                rainBanner.classList.remove('hidden');
+                waterBox.classList.remove('bg-sky-50/50', 'border-sky-100');
+                waterBox.classList.add('bg-blue-50/80', 'border-blue-200');
+                waterTag.textContent = 'RAIN OFF (0 ml)';
+                waterTag.className = 'text-[10px] font-mono font-bold text-white bg-blue-600 px-2 py-0.5 rounded-full';
+            } else {
+                rainBanner.classList.add('hidden');
+                waterBox.classList.add('bg-sky-50/50', 'border-sky-100');
+                waterBox.classList.remove('bg-blue-50/80', 'border-blue-200');
+                waterTag.textContent = '1ml = 1s Pump';
+                waterTag.className = 'text-[10px] font-mono font-semibold text-sky-700 bg-sky-100 px-2 py-0.5 rounded-full';
+
+                if (parseFloat(waterInput.value) === 0 && state.savedDryWaterMl > 0) {
+                    waterInput.value = state.savedDryWaterMl;
+                }
+            }
+
+            handleInputChange();
+        }
+
+        // --- Live Weather Fetch (Open-Meteo Free API) ---
+        async function fetchLiveWeather() {
+            const selectEl = document.getElementById('weather-city-select');
+            const val = selectEl.value;
+            const infoStrip = document.getElementById('live-weather-info');
+            const descEl = document.getElementById('live-weather-desc');
+            const tempEl = document.getElementById('live-weather-temp');
+            const refreshIcon = document.querySelector('#btn-refresh-weather i');
+
+            if (val === 'manual') {
+                infoStrip.classList.add('hidden');
+                return;
+            }
+
+            const [lat, lon] = val.split(',');
+            const cityName = selectEl.options[selectEl.selectedIndex].text;
+
+            try {
+                refreshIcon.classList.add('fa-spin');
+                infoStrip.classList.remove('hidden');
+                descEl.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-sky-500 mr-1"></i> Checking live weather for ${cityName}...`;
+
+                const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,precipitation,rain,weather_code`;
+                const res = await fetch(url);
+                if (!res.ok) throw new Error('Weather API unavailable');
+                const data = await res.json();
+
+                const current = data.current;
+                const temp = current.temperature_2m;
+                const precip = current.precipitation || 0;
+                const code = current.weather_code;
+
+                const isRainy = precip > 0.1 || (code >= 51 && code <= 99);
+                const isCloudy = !isRainy && (code === 2 || code === 3 || code === 45 || code === 48);
+
+                tempEl.textContent = `${temp.toFixed(1)}°C`;
+
+                if (isRainy) {
+                    setWeatherCondition('rainy');
+                    descEl.innerHTML = `<i class="fa-solid fa-cloud-rain text-blue-600 mr-1"></i> <b>${cityName}</b>: වර්ෂාව පවතී (${precip}mm) - ජලය දැමීම නවතා ඇත.`;
+                } else if (isCloudy) {
+                    setWeatherCondition('cloudy');
+                    descEl.innerHTML = `<i class="fa-solid fa-cloud text-slate-500 mr-1"></i> <b>${cityName}</b>: වළාකුළු සහිතයි (වැසි නැත).`;
+                } else {
+                    setWeatherCondition('sunny');
+                    descEl.innerHTML = `<i class="fa-solid fa-sun text-amber-500 mr-1"></i> <b>${cityName}</b>: පැහැදිලි අව්ව සහිත කාලගුණයකි.`;
+                }
+            } catch (err) {
+                descEl.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-amber-500 mr-1"></i> Live weather offline. Please select weather condition manually above.`;
+                tempEl.textContent = '';
+            } finally {
+                refreshIcon.classList.remove('fa-spin');
+            }
+        }
+
+        function handleManualSpacingEdit() {
+            if (state.selectedCropId !== 'custom') {
+                document.getElementById('preset-badge').textContent = 'Custom Adjusted';
+            }
+            handleInputChange();
+        }
+
+        function handleManualWaterEdit() {
+            const val = parseFloat(document.getElementById('input-water-ml').value);
+            if (!isNaN(val) && val > 0) {
+                state.savedDryWaterMl = val;
+                if (state.weatherCondition === 'rainy') {
+                    setWeatherCondition('sunny');
+                    return;
+                }
+            }
+            handleInputChange();
+        }
+
+        function setUnit(newUnit) {
+            if (state.unit === newUnit) return;
+            const factor = newUnit === 'm' ? 0.01 : 100;
+
+            const lengthEl = document.getElementById('input-length');
+            const widthEl = document.getElementById('input-width');
+            const pSpaceEl = document.getElementById('input-plant-spacing');
+            const rSpaceEl = document.getElementById('input-row-spacing');
+
+            lengthEl.value = +(parseFloat(lengthEl.value || 0) * factor).toFixed(3);
+            widthEl.value = +(parseFloat(widthEl.value || 0) * factor).toFixed(3);
+            pSpaceEl.value = +(parseFloat(pSpaceEl.value || 0) * factor).toFixed(3);
+            rSpaceEl.value = +(parseFloat(rSpaceEl.value || 0) * factor).toFixed(3);
+
+            state.unit = newUnit;
+
+            document.getElementById('unit-cm').className = newUnit === 'cm'
+                ? 'px-2.5 py-1 rounded-md bg-white text-emerald-700 shadow-sm transition'
+                : 'px-2.5 py-1 rounded-md text-slate-600 hover:text-slate-900 transition';
+            document.getElementById('unit-m').className = newUnit === 'm'
+                ? 'px-2.5 py-1 rounded-md bg-white text-emerald-700 shadow-sm transition'
+                : 'px-2.5 py-1 rounded-md text-slate-600 hover:text-slate-900 transition';
+
+            document.querySelectorAll('.unit-label').forEach(el => {
+                el.textContent = newUnit;
+            });
+
+            handleInputChange();
+        }
+
+        function setTurnDirection(dir) {
+            state.turnDirection = dir;
+            document.getElementById('turn-right').className = dir === 'right'
+                ? 'px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 text-white shadow-sm transition flex items-center space-x-1'
+                : 'px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition flex items-center space-x-1';
+            document.getElementById('turn-left').className = dir === 'left'
+                ? 'px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 text-white shadow-sm transition flex items-center space-x-1'
+                : 'px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition flex items-center space-x-1';
+
+            handleInputChange();
+        }
+
+        function resetDefaults() {
+            if (state.unit !== 'cm') setUnit('cm');
+            const todayStr = getLocalTodayDateString();
+            state.plantingStartDate = todayStr;
+            document.getElementById('input-planting-date').value = todayStr;
+            document.getElementById('input-length').value = 250;
+            document.getElementById('input-width').value = 180;
+            document.getElementById('input-flow-rate').value = 1.0;
+            document.getElementById('weather-city-select').value = 'manual';
+            document.getElementById('live-weather-info').classList.add('hidden');
+            setWeatherCondition('sunny');
+            setTurnDirection('right');
+            selectCropPreset('chilli', false);
+        }
+
+        function fillMaxPlants() {
+            document.getElementById('input-target-plants').value = state.maxCapacityPlants;
+            handleInputChange();
+        }
+
+        function dismissBuzzerBanner() {
+            document.getElementById('buzzer-alert-banner').classList.add('hidden');
+        }
+
+        function handleInputChange() {
+            recalculateField();
+            resetSimulation();
+        }
+
+        function addStepWaypoint(waypoints, x, y, meta) {
+            if (waypoints.length === 0) {
+                waypoints.push({ x, y, ...meta });
+                return;
+            }
+            const prev = waypoints[waypoints.length - 1];
+            if (Math.hypot(x - prev.x, y - prev.y) < 0.01) {
+                return;
+            }
+            waypoints.push({ x, y, ...meta });
+        }
+
+        // --- Boustrophedon (Forward Row -> 90° U-Turn -> Return Row Planting) ---
+        function recalculateField() {
+            const rawL = parseFloat(document.getElementById('input-length').value);
+            const rawW = parseFloat(document.getElementById('input-width').value);
+            const rawPS = parseFloat(document.getElementById('input-plant-spacing').value);
+            const rawRS = parseFloat(document.getElementById('input-row-spacing').value);
+            const rawTarget = parseInt(document.getElementById('input-target-plants').value, 10);
+            const rawWaterMl = parseFloat(document.getElementById('input-water-ml').value);
+            const rawFlowRate = parseFloat(document.getElementById('input-flow-rate').value);
+
+            const alertBox = document.getElementById('validation-alert');
+            const alertText = document.getElementById('validation-text');
+            let warningMsg = '';
+
+            if (isNaN(rawL) || isNaN(rawW) || isNaN(rawPS) || isNaN(rawRS) || rawL <= 0 || rawW <= 0 || rawPS <= 0 || rawRS <= 0) {
+                alertBox.classList.remove('hidden');
+                alertText.textContent = 'Please enter positive numbers greater than 0 for field dimensions and spacing.';
+                return;
+            }
+
+            const toCm = state.unit === 'm' ? 100 : 1;
+            const L = rawL * toCm;
+            const W = rawW * toCm;
+            const PS = rawPS * toCm;
+            const RS = rawRS * toCm;
+
+            if (PS > L || RS > W) {
+                warningMsg = 'Spacing is larger than field dimensions—only 1 plant/row fits. Reduce spacing to see full grid.';
+            }
+
+            state.lengthCm = L;
+            state.widthCm = W;
+            state.plantSpacingCm = PS;
+            state.rowSpacingCm = RS;
+
+            const plantsPerRow = Math.min(100, Math.floor((L + 1e-6) / PS) + 1);
+            const totalRows = Math.min(100, Math.floor((W + 1e-6) / RS) + 1);
+            const maxCapacityPlants = plantsPerRow * totalRows;
+
+            let requestedTarget = isNaN(rawTarget) || rawTarget < 1 ? maxCapacityPlants : rawTarget;
+            if (requestedTarget > maxCapacityPlants) {
+                warningMsg = `Target plants (${requestedTarget}) exceeds max field capacity (${maxCapacityPlants}). Capped at ${maxCapacityPlants} plants.`;
+                requestedTarget = maxCapacityPlants;
+            }
+
+            if (warningMsg) {
+                alertBox.classList.remove('hidden');
+                alertText.textContent = warningMsg;
+            } else {
+                alertBox.classList.add('hidden');
+            }
+
+            const effectiveWaterMl = state.weatherCondition === 'rainy'
+                ? 0
+                : (isNaN(rawWaterMl) || rawWaterMl < 0 ? 0 : rawWaterMl);
+
+            const flowRate = isNaN(rawFlowRate) || rawFlowRate <= 0 ? 1.0 : rawFlowRate;
+            const pumpSec = effectiveWaterMl / flowRate;
+            const pumpMs = Math.round(pumpSec * 1000);
+            const totalWaterMl = requestedTarget * effectiveWaterMl;
+
+            state.plantsPerRow = plantsPerRow;
+            state.totalRows = totalRows;
+            state.maxCapacityPlants = maxCapacityPlants;
+            state.effectiveTargetPlants = requestedTarget;
+            state.waterPerPlantMl = effectiveWaterMl;
+            state.pumpFlowRateMlPerSec = flowRate;
+            state.pumpDurationSec = pumpSec;
+            state.pumpDurationMs = pumpMs;
+            state.totalWaterMl = totalWaterMl;
+
+            const nodes = [];
+            const waypoints = [];
+            let sequenceCounter = 0;
+
+            for (let r = 0; r < totalRows; r++) {
+                const goesLeftToRight = (r % 2 === 0);
+                const yPos = state.turnDirection === 'right'
+                    ? r * RS
+                    : W - (r * RS);
+
+                const rowStartX = goesLeftToRight ? 0 : L;
+                const rowEndX = goesLeftToRight ? L : 0;
+
+                if (waypoints.length > 0 && sequenceCounter < requestedTarget) {
+                    addStepWaypoint(waypoints, rowStartX, yPos, {
+                        nodeId: null,
+                        seq: null,
+                        row: r,
+                        isPlantSpot: false,
+                        isUTurnLeg: true
+                    });
+                }
+
+                for (let step = 0; step < plantsPerRow; step++) {
+                    const colIndex = goesLeftToRight ? step : (plantsPerRow - 1 - step);
+                    const xPos = colIndex * PS;
+
+                    const nodeId = `${r}-${colIndex}`;
+                    const isWithinTarget = sequenceCounter < requestedTarget;
+
+                    nodes.push({
+                        id: nodeId,
+                        seq: sequenceCounter + 1,
+                        row: r,
+                        col: colIndex,
+                        x: xPos,
+                        y: yPos,
+                        isTarget: isWithinTarget
+                    });
+
+                    if (isWithinTarget) {
+                        addStepWaypoint(waypoints, xPos, yPos, {
+                            nodeId: nodeId,
+                            seq: sequenceCounter + 1,
+                            row: r,
+                            isPlantSpot: true,
+                            isUTurnLeg: false
+                        });
+                    }
+                    sequenceCounter++;
+                }
+
+                if (sequenceCounter < requestedTarget && r < totalRows - 1) {
+                    addStepWaypoint(waypoints, rowEndX, yPos, {
+                        nodeId: null,
+                        seq: null,
+                        row: r,
+                        isPlantSpot: false,
+                        isUTurnLeg: false
+                    });
+                }
+            }
+
+            let activeDistanceCm = 0;
+            let activeUTurns = 0;
+            for (let i = 0; i < waypoints.length - 1; i++) {
+                const wpA = waypoints[i];
+                const wpB = waypoints[i + 1];
+                activeDistanceCm += Math.hypot(wpB.x - wpA.x, wpB.y - wpA.y);
+                if (Math.abs(wpB.y - wpA.y) > 0.01 && Math.abs(wpB.x - wpA.x) < 0.01) {
+                    activeUTurns++;
+                }
+            }
+
+            state.activeUTurns = activeUTurns;
+            state.totalDistanceCm = activeDistanceCm;
+            state.nodes = nodes;
+            state.waypoints = waypoints;
+
+            updateDashboardUI();
+            generatePlantingMilestones();
+        }
+
+        function updateDashboardUI() {
+            const crop = CROP_PRESETS[state.selectedCropId] || CROP_PRESETS.custom;
+
+            document.getElementById('max-capacity-badge').textContent = state.maxCapacityPlants;
+            document.getElementById('max-capacity-inline').textContent = state.maxCapacityPlants;
+
+            document.getElementById('stat-target-plants').textContent = state.effectiveTargetPlants;
+            document.getElementById('stat-max-plants').textContent = state.maxCapacityPlants;
+
+            const pumpCard = document.getElementById('kpi-pump-card');
+            if (state.weatherCondition === 'rainy') {
+                pumpCard.className = 'bg-gradient-to-br from-slate-700 to-slate-800 rounded-2xl p-4 text-white shadow-md relative overflow-hidden transition-all';
+                document.getElementById('stat-pump-sec').textContent = '0.0s';
+                document.getElementById('stat-pump-ms').textContent = '(Rain OFF)';
+            } else {
+                pumpCard.className = 'bg-gradient-to-br from-sky-600 to-blue-700 rounded-2xl p-4 text-white shadow-md shadow-sky-600/15 relative overflow-hidden transition-all';
+                document.getElementById('stat-pump-sec').textContent = `${state.pumpDurationSec.toFixed(1)}s`;
+                document.getElementById('stat-pump-ms').textContent = `(${state.pumpDurationMs}ms)`;
+            }
+
+            document.getElementById('stat-total-water-ml').textContent = Math.round(state.totalWaterMl);
+            document.getElementById('stat-total-water-l').textContent = `(${(state.totalWaterMl / 1000).toFixed(2)}L)`;
+
+            document.getElementById('stat-grid-dims').textContent = `${state.plantsPerRow}×${state.totalRows}`;
+            const distMeters = (state.totalDistanceCm / 100).toFixed(2);
+            document.getElementById('stat-distance').textContent = `${distMeters}m`;
+
+            document.getElementById('live-total-target').textContent = state.effectiveTargetPlants;
+
+            const bufferSeedlings = Math.ceil(state.effectiveTargetPlants * 1.1);
+            const trays50 = Math.ceil(bufferSeedlings / 50);
+            document.getElementById('helper-trays-50').textContent = `${trays50} Tray${trays50 > 1 ? 's' : ''} (50-cell)`;
+            document.getElementById('helper-buffer-seedlings').innerHTML = `+10% අමතර පැළ: <b>${bufferSeedlings} seedlings</b> තවාන් කරන්න (පාළු සිටුවීමට).`;
+
+            if (state.weatherCondition === 'rainy' || state.totalWaterMl === 0) {
+                document.getElementById('helper-tank-refills').textContent = '0 Refills (Rain Mode)';
+                document.getElementById('helper-tank-note').textContent = 'වර්ෂාව නිසා ජල ටැංකිය පිරවීම අවශ්‍ය නොවේ.';
+            } else {
+                const tankCapacityMl = 5000;
+                const refills = Math.ceil(state.totalWaterMl / tankCapacityMl);
+                const pct = Math.min(100, Math.round((state.totalWaterMl / tankCapacityMl) * 100));
+                document.getElementById('helper-tank-refills').textContent = refills === 1
+                    ? `1 Tank (${pct}% Full)`
+                    : `${refills} Tank Refills (5L)`;
+                document.getElementById('helper-tank-note').textContent = refills === 1
+                    ? '5L රොබෝ ටැංකිය එක් වරක් පිරවීම ප්‍රමාණවත් වේ.'
+                    : `මුළු වගාවට 5L ටැංකිය ${refills} වරක් පිරවීමට සිදුවේ.`;
+            }
+
+            const travelSeconds = state.totalDistanceCm / 15;
+            const plantingSeconds = state.effectiveTargetPlants * (4 + state.pumpDurationSec);
+            const totalMinutes = Math.max(1, Math.round((travelSeconds + plantingSeconds) / 60));
+            const areaSqm = ((state.lengthCm * state.widthCm) / 10000).toFixed(2);
+
+            document.getElementById('helper-est-time').textContent = `~${totalMinutes} min${totalMinutes > 1 ? 's' : ''}`;
+            document.getElementById('helper-area-sqm').innerHTML = `වගා බිම් වර්ගඵලය: <b>${areaSqm} m²</b>`;
+
+            const firstTurnStr = state.turnDirection === 'right'
+                ? '1;       // 1 = Right (දකුණ), -1 = Left (වම)'
+                : '-1;      // 1 = Right (දකුණ), -1 = Left (වම)';
+
+            const weatherComment = state.weatherCondition === 'rainy'
+                ? `// WEATHER OVERRIDE: RAINY (වර්ෂා සහිතයි) -> Watering skipped (0 ml)`
+                : `// Weather: ${state.weatherCondition.toUpperCase()} | Pump Flow: ${state.pumpFlowRateMlPerSec.toFixed(1)} ml/sec`;
+
+            const codeSnippet = `// --- AGNOWA Smart Field Config: ${crop.enName} (${crop.siName}) ---
+// Grid: ${state.plantsPerRow}x${state.totalRows} (${state.maxCapacityPlants} max) | Total Water: ${Math.round(state.totalWaterMl)} ml
+const int plantsPerRow          = ${state.plantsPerRow};       // එක පේළියක උපරිම පැළ ගණන
+const int totalRows             = ${state.totalRows};       // මුළු පේළි ගණන
+const int targetPlantCount      = ${state.effectiveTargetPlants};      // සිටුවිය යුතු උපරිම පැළ ගණන (අවසානයේ Buzzer නාද වේ)
+const float rowLengthCM         = ${state.lengthCm.toFixed(1)};    // පේළියේ ස්ථිර දිග (cm) - මෙම දුර අවසානයේ 90° U-Turn ගනී
+const float plantSpacing        = ${state.plantSpacingCm.toFixed(1)};    // පැළ දෙකක් අතර දුර (cm)
+const float rowSpacing          = ${state.rowSpacingCm.toFixed(1)};    // පේළි අතර තිරස් දුර (cm)
+const int firstTurnDir          = ${firstTurnStr}
+
+${weatherComment}
+const float waterPerPlantML     = ${state.waterPerPlantMl.toFixed(1)};    // පැළයකට දමන ජල ප්‍රමාණය (ml)
+const unsigned long pumpTimeMs  = ${state.pumpDurationMs};   // Water pump ON කාලය (ms)`;
+
+            document.getElementById('arduino-code-block').textContent = codeSnippet;
+        }
+
+        // --- Planting Calendar, Milestones, .ICS & WhatsApp Logic ---
+        function handleCalendarDateChange() {
+            const val = document.getElementById('input-planting-date').value;
+            if (val) {
+                state.plantingStartDate = val;
+                state.isWhatsAppEditedManually = false;
+                generatePlantingMilestones();
+            }
+        }
+
+        function generatePlantingMilestones() {
+            const crop = CROP_PRESETS[state.selectedCropId] || CROP_PRESETS.custom;
+            const startDate = parseLocalDate(state.plantingStartDate);
+
+            const day0 = 0;
+            const dayEst = crop.establishmentDay || 10;
+            const dayFert = crop.fertilizerDay || 21;
+            const dayFlow = crop.floweringDay || 42;
+            const dayHarvestStart = crop.harvestStartDay || 65;
+            const dayHarvestPeak = crop.harvestPeakDay || (dayHarvestStart + 7);
+
+            const waterActionNote = state.weatherCondition === 'rainy'
+                ? `වර්ෂා සහිත කාලගුණය නිසා අද ජලය දැමීම අවශ්‍ය නොවේ (0 ml). Rainy day: watering skipped.`
+                : `පැළයකට ${state.waterPerPlantMl} ml (${state.pumpDurationSec.toFixed(1)}s pump) බැගින් මුළු ජලය ${Math.round(state.totalWaterMl)} ml සපයන්න.`;
+
+            const rawMilestones = [
+                {
+                    id: 'plant-day-0',
+                    dayOffset: day0,
+                    badge: 'Day 0 (ආරම්භය)',
+                    tagColor: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+                    siTitle: `${crop.siName} පැළ සිටුවීම සහ මූලික ජල සැපයුම`,
+                    enTitle: `Planting & Initial Watering (${state.effectiveTargetPlants} plants)`,
+                    notes: `${state.effectiveTargetPlants} පැළ (${state.plantsPerRow}×${state.totalRows} grid, පරතරය ${state.plantSpacingCm}×${state.rowSpacingCm} cm) සිටුවන්න. ${waterActionNote}`
+                },
+                {
+                    id: 'establish-check',
+                    dayOffset: dayEst,
+                    badge: `Day +${dayEst}`,
+                    tagColor: 'bg-sky-100 text-sky-800 border-sky-200',
+                    siTitle: `පැළ ස්ථාපනය සහ අඩු පැළ පිරවීම (Gap-Fill)`,
+                    enTitle: `Establishment Check & Gap Filling`,
+                    notes: `මැරුණු හෝ දුර්වල පැළ ඇත්නම් +10% අමතර තවාන් පැළ වලින් පුරවන්න. ${crop.wateringGuide.split('。')[0]}.`
+                },
+                {
+                    id: 'fertilizer-care',
+                    dayOffset: dayFert,
+                    badge: `Day +${dayFert}`,
+                    tagColor: 'bg-amber-100 text-amber-800 border-amber-200',
+                    siTitle: `පොහොර යෙදීම, වල් නෙළීම සහ පස ලං කිරීම`,
+                    enTitle: `Top-Dressing Fertilizer, Weeding & Care`,
+                    notes: `වල් පැළ ඉවත් කර පොහොර යොදන්න. ${crop.fertilizerGuide.split('。')[0]}.`
+                },
+                {
+                    id: 'flowering-pest',
+                    dayOffset: dayFlow,
+                    badge: `Day +${dayFlow}`,
+                    tagColor: 'bg-orange-100 text-orange-800 border-orange-200',
+                    siTitle: `මල්/ඵල හැදීම සහ පළිබෝධ පරීක්ෂාව`,
+                    enTitle: `Flowering / Fruiting & Pest Monitoring`,
+                    notes: `මල් හා ඵල හැදෙන අවධියේ පළිබෝධ/රෝග පරීක්ෂා කරන්න. ${crop.pestGuide.split('。')[0]}.`
+                },
+                {
+                    id: 'harvest-start',
+                    dayOffset: dayHarvestStart,
+                    badge: `Day +${dayHarvestStart} (අස්වැන්න)`,
+                    tagColor: 'bg-purple-100 text-purple-800 border-purple-200',
+                    siTitle: `${crop.siName} අස්වැන්න නෙළීම ආරම්භ වන දිනය`,
+                    enTitle: `Expected Harvest Start (${crop.yieldPerPlant})`,
+                    notes: `${crop.harvestGuide.split('。')[0]}. අපේක්ෂිත අස්වැන්න: ${crop.yieldPerPlant}.`
+                },
+                {
+                    id: 'harvest-peak',
+                    dayOffset: dayHarvestPeak,
+                    badge: `Day +${dayHarvestPeak} (Peak)`,
+                    tagColor: 'bg-fuchsia-100 text-fuchsia-800 border-fuchsia-200',
+                    siTitle: `උපරිම අස්වනු කාලය සහ නඩත්තුව`,
+                    enTitle: `Peak Harvest & Continuous Care Window`,
+                    notes: `නියමිත පරිදි අස්වැන්න නෙළා ගනිමින් ශාකවල තෙතමනය හා පෝෂණය පවත්වා ගන්න.`
+                }
+            ];
+
+            state.milestones = rawMilestones.map(m => {
+                const dateObj = addDaysToDate(startDate, m.dayOffset);
+                return {
+                    ...m,
+                    dateObj,
+                    displayDate: formatDisplayDate(dateObj),
+                    icsDate: formatIcsDate(dateObj)
+                };
+            });
+
+            renderMilestonesUI(crop);
+            rebuildWhatsAppMessage(false);
+        }
+
+        function renderMilestonesUI(crop) {
+            document.getElementById('milestone-crop-label').textContent = `${crop.emoji} ${crop.siName} (${crop.enName})`;
+
+            const harvestMilestone = state.milestones.find(m => m.id === 'harvest-start');
+            if (harvestMilestone) {
+                document.getElementById('milestone-harvest-summary').textContent =
+                    `අස්වැන්න ආරම්භය: ${harvestMilestone.displayDate.split(' ')[0]}`;
+            }
+
+            const listEl = document.getElementById('planting-milestones-list');
+            listEl.innerHTML = state.milestones.map((m, idx) => `
+                <div class="rounded-xl border border-slate-200/90 bg-slate-50/60 hover:bg-white p-3.5 transition flex flex-col sm:flex-row sm:items-start justify-between gap-2.5">
+                    <div class="space-y-1">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${m.tagColor}">
+                                ${m.badge}
+                            </span>
+                            <span class="text-xs font-mono font-bold text-slate-800">
+                                <i class="fa-regular fa-calendar text-emerald-600 mr-1"></i>${m.displayDate}
+                            </span>
+                        </div>
+                        <h4 class="text-xs sm:text-sm font-bold text-slate-900">
+                            ${idx + 1}. ${m.siTitle} <span class="text-slate-500 font-medium text-xs">— ${m.enTitle}</span>
+                        </h4>
+                        <p class="text-xs text-slate-600 leading-relaxed">${m.notes}</p>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function escapeIcsText(str) {
+            return String(str || '')
+                .replace(/\\/g, '\\\\')
+                .replace(/;/g, '\\;')
+                .replace(/,/g, '\\,')
+                .replace(/\r?\n/g, '\\n');
+        }
+
+        function downloadIcsCalendar() {
+            if (!state.milestones || state.milestones.length === 0) {
+                generatePlantingMilestones();
+            }
+
+            const crop = CROP_PRESETS[state.selectedCropId] || CROP_PRESETS.custom;
+            const nowStamp = new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+
+            const vevents = state.milestones.map((m, idx) => {
+                const dtStart = m.icsDate;
+                const dtEnd = formatIcsDate(addDaysToDate(m.dateObj, 1));
+                const uid = `agnowa-${crop.id}-${m.dayOffset}-${idx}-${dtStart}@agnowa.smart`;
+                const summary = escapeIcsText(`AGNOWA [${crop.siName} / ${crop.enName}]: ${m.enTitle}`);
+                const description = escapeIcsText(
+                    `${m.siTitle} (${m.enTitle})\n` +
+                    `Date: ${m.displayDate} (${m.badge})\n` +
+                    `Field: ${state.lengthCm}x${state.widthCm} cm | Grid: ${state.plantsPerRow}x${state.totalRows} (${state.effectiveTargetPlants} plants)\n` +
+                    `Notes: ${m.notes}`
+                );
+
+                return [
+                    'BEGIN:VEVENT',
+                    `UID:${uid}`,
+                    `DTSTAMP:${nowStamp}`,
+                    `DTSTART;VALUE=DATE:${dtStart}`,
+                    `DTEND;VALUE=DATE:${dtEnd}`,
+                    `SUMMARY:${summary}`,
+                    `DESCRIPTION:${description}`,
+                    'BEGIN:VALARM',
+                    'ACTION:DISPLAY',
+                    `DESCRIPTION:${summary}`,
+                    'TRIGGER:-PT2H',
+                    'END:VALARM',
+                    'END:VEVENT'
+                ].join('\r\n');
+            }).join('\r\n');
+
+            const icsContent = [
+                'BEGIN:VCALENDAR',
+                'VERSION:2.0',
+                'PRODID:-//AGNOWA//Smart Planting Calendar v1.4//EN',
+                'CALSCALE:GREGORIAN',
+                'METHOD:PUBLISH',
+                `X-WR-CALNAME:AGNOWA ${crop.enName} Planting Schedule`,
+                vevents,
+                'END:VCALENDAR'
+            ].join('\r\n');
+
+            const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            const safeCropSlug = crop.enName.replace(/[^a-zA-Z0-9]+/g, '-');
+            a.href = url;
+            a.download = `AGNOWA-Planting-Calendar-${safeCropSlug}-${state.plantingStartDate}.ics`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+            const feedback = document.getElementById('ics-status-feedback');
+            feedback.textContent = `✓ Downloaded ${state.milestones.length} calendar reminders (.ics)`;
+            setTimeout(() => {
+                feedback.textContent = '';
+            }, 4000);
+        }
+
+        function buildDefaultWhatsAppSummary() {
+            const crop = CROP_PRESETS[state.selectedCropId] || CROP_PRESETS.custom;
+            const bufferSeedlings = Math.ceil(state.effectiveTargetPlants * 1.1);
+
+            const weatherLabel = state.weatherCondition === 'rainy'
+                ? '🌧️ වර්ෂා සහිතයි (Rainy - ජලය දැමීම අවශ්‍ය නොවේ / 0 ml)'
+                : (state.weatherCondition === 'cloudy'
+                    ? '⛅ වළාකුළු සහිතයි (Cloudy)'
+                    : '☀️ අව්ව සහිතයි (Sunny / Dry)');
+
+            const fertMilestone = state.milestones.find(m => m.id === 'fertilizer-care');
+            const harvestMilestone = state.milestones.find(m => m.id === 'harvest-start');
+
+            const fertLine = fertMilestone
+                ? `• පොහොර / නඩත්තු (Day +${fertMilestone.dayOffset}): ${fertMilestone.displayDate.split(' ')[0]}`
+                : '';
+            const harvestLine = harvestMilestone
+                ? `• අපේක්ෂිත අස්වැන්න (Day +${harvestMilestone.dayOffset}): ${harvestMilestone.displayDate.split(' ')[0]} (${crop.yieldPerPlant})`
+                : '';
+
+            return [
+                `${crop.emoji} *AGNOWA වගා සැලැස්ම & මතක් කිරීම*`,
+                `--------------------------------`,
+                `🌱 *බෝගය (Crop):* ${crop.siName} (${crop.enName})`,
+                `📅 *සිටුවන දිනය (Start Date):* ${state.plantingStartDate}`,
+                `📐 *වගා බිම:* ${state.lengthCm} cm × ${state.widthCm} cm`,
+                `📏 *පරතරය:* පැළ ${state.plantSpacingCm} cm | පේළි ${state.rowSpacingCm} cm`,
+                `🔢 *පේළි & පැළ:* ${state.plantsPerRow}×${state.totalRows} Grid | Target: *${state.effectiveTargetPlants} plants* (+10% තවාන්: ${bufferSeedlings})`,
+                `🌤️ *කාලගුණය:* ${weatherLabel}`,
+                `💧 *ජලය & Pump:* ${state.waterPerPlantMl} ml/plant (${state.pumpDurationSec.toFixed(1)}s / ${state.pumpDurationMs}ms) | මුළු ජලය: *${Math.round(state.totalWaterMl)} ml*`,
+                ``,
+                `🗓️ *ප්‍රධාන දින:*`,
+                fertLine,
+                harvestLine,
+                `--------------------------------`,
+                `Generated by AGNOWA v1.4`
+            ].filter(Boolean).join('\n');
+        }
+
+        function rebuildWhatsAppMessage(forceReset) {
+            if (forceReset) {
+                state.isWhatsAppEditedManually = false;
+            }
+            const generated = buildDefaultWhatsAppSummary();
+            if (!state.isWhatsAppEditedManually) {
+                state.customWhatsAppText = generated;
+            }
+            const textarea = document.getElementById('whatsapp-summary-textarea');
+            if (textarea && !state.isWhatsAppEditedManually) {
+                textarea.value = generated;
+            }
+        }
+
+        function handleWhatsAppManualEdit() {
+            const textarea = document.getElementById('whatsapp-summary-textarea');
+            state.isWhatsAppEditedManually = true;
+            state.customWhatsAppText = textarea.value;
+        }
+
+        function toggleWhatsAppEditor() {
+            const panel = document.getElementById('whatsapp-summary-panel');
+            const label = document.getElementById('wa-edit-toggle-label');
+            const textarea = document.getElementById('whatsapp-summary-textarea');
+
+            const isHidden = panel.classList.contains('hidden');
+            if (isHidden) {
+                if (!state.customWhatsAppText) {
+                    state.customWhatsAppText = buildDefaultWhatsAppSummary();
+                }
+                textarea.value = state.customWhatsAppText;
+                panel.classList.remove('hidden');
+                label.textContent = 'Hide WhatsApp Editor';
+            } else {
+                panel.classList.add('hidden');
+                label.textContent = 'Preview / Edit WhatsApp';
+            }
+        }
+
+        function getActiveWhatsAppText() {
+            const textarea = document.getElementById('whatsapp-summary-textarea');
+            if (state.isWhatsAppEditedManually && textarea) {
+                return textarea.value;
+            }
+            return buildDefaultWhatsAppSummary();
+        }
+
+        function shareWhatsAppSummary() {
+            const msg = getActiveWhatsAppText();
+            const waUrl = `https://wa.me/?text=${encodeURIComponent(msg)}`;
+            window.open(waUrl, '_blank', 'noopener,noreferrer');
+        }
+
+        function copyWhatsAppSummary() {
+            const msg = getActiveWhatsAppText();
+            copyToClipboardHelper(msg, () => {
+                const icon = document.getElementById('wa-copy-icon');
+                const label = document.getElementById('wa-copy-label');
+                icon.className = 'fa-solid fa-check';
+                label.textContent = 'Copied!';
+                setTimeout(() => {
+                    icon.className = 'fa-regular fa-copy';
+                    label.textContent = 'Copy Msg';
+                }, 2000);
+            });
+        }
+
+        function copyArduinoCode() {
+            const codeText = document.getElementById('arduino-code-block').textContent;
+            copyToClipboardHelper(codeText, () => {
+                const btn = document.getElementById('copy-btn');
+                const icon = document.getElementById('copy-icon');
+                const label = document.getElementById('copy-text');
+
+                btn.classList.replace('bg-emerald-600', 'bg-teal-500');
+                icon.className = 'fa-solid fa-check';
+                label.textContent = 'Copied!';
+
+                setTimeout(() => {
+                    btn.classList.replace('bg-teal-500', 'bg-emerald-600');
+                    icon.className = 'fa-regular fa-copy';
+                    label.textContent = 'Copy Code';
+                }, 2000);
+            });
+        }
+
+        function copyFarmerReport() {
+            const crop = CROP_PRESETS[state.selectedCropId] || CROP_PRESETS.custom;
+            const bufferSeedlings = Math.ceil(state.effectiveTargetPlants * 1.1);
+            const weatherText = state.weatherCondition === 'rainy'
+                ? 'වර්ෂා සහිතයි (Rainy - ජලය දැමීම අවශ්‍ය නොවේ / 0ml)'
+                : (state.weatherCondition === 'cloudy' ? 'වළාකුළු සහිතයි (Cloudy)' : 'අව්ව සහිතයි (Sunny)');
+
+            const report = `🌱 AGNOWA වගා සැලැස්ම (Field Plan Summary)
+-----------------------------------------
+• බෝග වර්ගය (Crop): ${crop.siName} (${crop.enName})
+• වගා බිම (Field Size): ${state.lengthCm}cm × ${state.widthCm}cm
+• පරතරය (Spacing): පැළ අතර ${state.plantSpacingCm}cm | පේළි අතර ${state.rowSpacingCm}cm
+• සිටුවන පැළ ගණන: ${state.effectiveTargetPlants} (තවාන් කළ යුතු +10% පැළ: ${bufferSeedlings})
+• කාලගුණ තත්ත්වය: ${weatherText}
+• පැළයකට ජලය: ${state.waterPerPlantMl} ml (මුළු ජලය: ${Math.round(state.totalWaterMl)} ml)
+• අස්වනු කාලය: ${crop.harvestDays} (${crop.yieldPerPlant})
+-----------------------------------------`;
+
+            copyToClipboardHelper(report, () => {
+                const icon = document.getElementById('summary-copy-icon');
+                const text = document.getElementById('summary-copy-text');
+                icon.className = 'fa-solid fa-check';
+                if (text) text.textContent = 'Sheet Copied!';
+                setTimeout(() => {
+                    icon.className = 'fa-solid fa-share-nodes';
+                    if (text) text.textContent = 'Copy Field Sheet';
+                }, 2200);
+            });
+        }
+
+        function copyToClipboardHelper(text, onSuccess) {
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-9999px';
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                if (onSuccess) onSuccess();
+            } catch (err) {
+                console.error('Copy failed', err);
+            }
+            document.body.removeChild(textArea);
+        }
+
+        // --- Simulation Controls ---
+        function toggleSimulation() {
+            if (state.waypoints.length === 0) return;
+            if (state.simFinished) {
+                resetSimulation();
+            }
+            state.isSimulating = !state.isSimulating;
+            updateSimButtons();
+        }
+
+        function resetSimulation() {
+            state.isSimulating = false;
+            state.simFinished = false;
+            state.currentSegmentIndex = 0;
+            state.segmentProgress = 0;
+            state.wateringPauseTimer = 0;
+            state.isWateringNow = false;
+            state.plantedSet.clear();
+
+            dismissBuzzerBanner();
+
+            if (state.waypoints.length > 0) {
+                state.robotX = state.waypoints[0].x;
+                state.robotY = state.waypoints[0].y;
+                state.robotAngle = 0;
+            }
+
+            document.getElementById('live-planted-count').textContent = '0';
+            document.getElementById('live-water-used').textContent = '0';
+            document.getElementById('live-robot-action').textContent = 'Ready at Start Origin';
+            updateSimButtons();
+        }
+
+        function setSimSpeed(speed) {
+            state.simSpeed = speed;
+            document.getElementById('spd-1').className = speed === 1
+                ? 'px-1.5 py-0.5 rounded bg-emerald-600 text-white font-bold'
+                : 'px-1.5 py-0.5 rounded hover:bg-slate-800 text-slate-300 font-semibold';
+            document.getElementById('spd-2').className = speed > 1
+                ? 'px-1.5 py-0.5 rounded bg-emerald-600 text-white font-bold'
+                : 'px-1.5 py-0.5 rounded hover:bg-slate-800 text-slate-300 font-semibold';
+        }
+
+        function updateSimButtons() {
+            const playIcon = document.getElementById('sim-play-icon');
+            const playText = document.getElementById('sim-play-text');
+            const badge = document.getElementById('sim-status-badge');
+
+            if (state.isSimulating) {
+                playIcon.className = 'fa-solid fa-pause';
+                playText.textContent = 'Pause';
+                badge.textContent = 'RUNNING';
+                badge.className = 'px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-500/20 text-emerald-700 animate-pulse';
+            } else if (state.simFinished) {
+                playIcon.className = 'fa-solid fa-rotate-right';
+                playText.textContent = 'Replay';
+                badge.textContent = 'COMPLETED';
+                badge.className = 'px-2 py-0.5 text-[10px] font-bold rounded-full bg-teal-100 text-teal-800';
+            } else {
+                playIcon.className = 'fa-solid fa-play';
+                playText.textContent = 'Simulate Robot';
+                badge.textContent = 'READY';
+                badge.className = 'px-2 py-0.5 text-[10px] font-bold rounded-full bg-slate-200 text-slate-600';
+            }
+        }
+
+        function startRenderLoop() {
+            function loop(timestamp) {
+                if (!lastTimestamp) lastTimestamp = timestamp;
+                const dt = (timestamp - lastTimestamp) / 1000;
+                lastTimestamp = timestamp;
+
+                updateSimulation(dt);
+                drawField();
+
+                animationFrameId = requestAnimationFrame(loop);
+            }
+            animationFrameId = requestAnimationFrame(loop);
+        }
+
+        function updateSimulation(dt) {
+            if (!state.isSimulating || state.waypoints.length === 0) return;
+
+            if (state.isWateringNow) {
+                state.wateringPauseTimer -= dt * state.simSpeed;
+                if (state.wateringPauseTimer > 0) {
+                    return;
+                }
+                state.isWateringNow = false;
+            }
+
+            if (state.currentSegmentIndex === 0 && state.segmentProgress === 0 && state.waypoints[0].isPlantSpot && !state.plantedSet.has(state.waypoints[0].nodeId)) {
+                const firstWp = state.waypoints[0];
+                state.plantedSet.add(firstWp.nodeId);
+                updateLiveTelemetryAfterPlanting(firstWp.seq);
+
+                if (state.waterPerPlantMl > 0) {
+                    state.isWateringNow = true;
+                    state.wateringPauseTimer = 0.45;
+                    return;
+                }
+            }
+
+            if (state.plantedSet.size >= state.effectiveTargetPlants || state.currentSegmentIndex >= state.waypoints.length - 1) {
+                completeMissionWithBuzzer();
+                return;
+            }
+
+            const p1 = state.waypoints[state.currentSegmentIndex];
+            const p2 = state.waypoints[state.currentSegmentIndex + 1];
+
+            const dx = p2.x - p1.x;
+            const dy = p2.y - p1.y;
+            const segDist = Math.hypot(dx, dy);
+
+            const baseSpeed = Math.max(state.lengthCm, state.widthCm) * 0.45;
+            const moveDist = baseSpeed * state.simSpeed * dt;
+
+            if (segDist > 0) {
+                state.segmentProgress += moveDist / segDist;
+            } else {
+                state.segmentProgress = 1;
+            }
+
+            const isVerticalShift = Math.abs(dy) > 0.01 && Math.abs(dx) < 0.01;
+            state.robotAngle = Math.atan2(dy, dx);
+
+            if (isVerticalShift) {
+                document.getElementById('live-robot-action').textContent = `90° U-Turn Shift (${state.rowSpacingCm}cm)`;
+            } else if (p2.isPlantSpot) {
+                const dirLabel = dx < 0 ? 'Return' : 'Forward';
+                document.getElementById('live-robot-action').textContent = `Row ${p1.row + 1} (${dirLabel}): Plant #${p2.seq}`;
+            } else {
+                document.getElementById('live-robot-action').textContent = `Row ${p1.row + 1}: Reaching Row End (${state.lengthCm}cm)`;
+            }
+
+            if (state.segmentProgress >= 1) {
+                state.segmentProgress = 0;
+                state.currentSegmentIndex++;
+                state.robotX = p2.x;
+                state.robotY = p2.y;
+
+                if (p2.isPlantSpot && !state.plantedSet.has(p2.nodeId)) {
+                    state.plantedSet.add(p2.nodeId);
+                    updateLiveTelemetryAfterPlanting(p2.seq);
+
+                    if (state.plantedSet.size >= state.effectiveTargetPlants) {
+                        completeMissionWithBuzzer();
+                        return;
+                    }
+
+                    if (state.waterPerPlantMl > 0) {
+                        state.isWateringNow = true;
+                        state.wateringPauseTimer = 0.45;
+                    }
+                }
+            } else {
+                state.robotX = p1.x + dx * state.segmentProgress;
+                state.robotY = p1.y + dy * state.segmentProgress;
+            }
+        }
+
+        function updateLiveTelemetryAfterPlanting(seqNum) {
+            const count = state.plantedSet.size;
+            const waterUsed = Math.round(count * state.waterPerPlantMl);
+            document.getElementById('live-planted-count').textContent = count;
+            document.getElementById('live-water-used').textContent = waterUsed;
+            if (state.waterPerPlantMl > 0) {
+                document.getElementById('live-robot-action').textContent = `Plant #${seqNum}: Watering ${state.waterPerPlantMl}ml (${state.pumpDurationSec.toFixed(1)}s)`;
+            } else if (state.weatherCondition === 'rainy') {
+                document.getElementById('live-robot-action').textContent = `Planted #${seqNum} (Rain: Water Skipped)`;
+            } else {
+                document.getElementById('live-robot-action').textContent = `Planted Seedling #${seqNum}`;
+            }
+        }
+
+        function completeMissionWithBuzzer() {
+            state.isSimulating = false;
+            state.simFinished = true;
+            state.isWateringNow = false;
+
+            const totalWaterDispensed = Math.round(state.plantedSet.size * state.waterPerPlantMl);
+            document.getElementById('live-robot-action').textContent = `BEEP! Target ${state.effectiveTargetPlants} plants done.`;
+
+            const banner = document.getElementById('buzzer-alert-banner');
+            const desc = document.getElementById('buzzer-alert-desc');
+            if (state.weatherCondition === 'rainy') {
+                desc.textContent = `Target of ${state.effectiveTargetPlants} plants planted! Watering skipped due to rainy weather. Buzzer sounding!`;
+            } else {
+                desc.textContent = `Target of ${state.effectiveTargetPlants} plants reached! Dispensed ${totalWaterDispensed}ml water. Buzzer sounding!`;
+            }
+            banner.classList.remove('hidden');
+
+            playBuzzerTone();
+            updateSimButtons();
+        }
+
+        function drawField() {
+            const wrapper = document.getElementById('canvas-wrapper');
+            const viewW = wrapper.clientWidth;
+            const viewH = wrapper.clientHeight;
+
+            ctx.clearRect(0, 0, viewW, viewH);
+
+            const padTop = 44;
+            const padBottom = 64;
+            const padLeft = 56;
+            const padRight = 44;
+
+            const availW = Math.max(100, viewW - padLeft - padRight);
+            const availH = Math.max(100, viewH - padTop - padBottom);
+
+            const scaleX = availW / state.lengthCm;
+            const scaleY = availH / state.widthCm;
+            const scale = Math.min(scaleX, scaleY);
+
+            const drawnW = state.lengthCm * scale;
+            const drawnH = state.widthCm * scale;
+
+            const offsetX = padLeft + (availW - drawnW) / 2;
+            const offsetY = padTop + (availH - drawnH) / 2;
+
+            const toScreenX = (cmX) => offsetX + cmX * scale;
+            const toScreenY = (cmY) => offsetY + cmY * scale;
+
+            // 1. Draw Field Boundary Box
+            ctx.save();
+            ctx.fillStyle = state.weatherCondition === 'rainy'
+                ? 'rgba(59, 130, 246, 0.08)'
+                : 'rgba(16, 185, 129, 0.06)';
+            ctx.strokeStyle = state.weatherCondition === 'rainy'
+                ? 'rgba(96, 165, 250, 0.5)'
+                : 'rgba(52, 211, 153, 0.45)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.roundRect(offsetX, offsetY, drawnW, drawnH, 8);
+            ctx.fill();
+            ctx.stroke();
+            ctx.restore();
+
+            // 2. Draw Dimension Callouts
+            ctx.save();
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = '600 11px Inter, sans-serif';
+            ctx.textAlign = 'center';
+
+            const lengthLabel = state.unit === 'm' ? `${(state.lengthCm / 100).toFixed(2)} m` : `${state.lengthCm} cm`;
+            ctx.fillText(`Row Length (දිග): ${lengthLabel}`, offsetX + drawnW / 2, offsetY - 14);
+
+            ctx.save();
+            ctx.translate(offsetX - 18, offsetY + drawnH / 2);
+            ctx.rotate(-Math.PI / 2);
+            const widthLabel = state.unit === 'm' ? `${(state.widthCm / 100).toFixed(2)} m` : `${state.widthCm} cm`;
+            ctx.fillText(`Width (පළල): ${widthLabel}`, 0, 0);
+            ctx.restore();
+            ctx.restore();
+
+            // 3. Draw Boustrophedon Path Lines
+            if (state.waypoints.length > 1) {
+                for (let i = 0; i < state.waypoints.length - 1; i++) {
+                    const wp1 = state.waypoints[i];
+                    const wp2 = state.waypoints[i + 1];
+
+                    const x1 = toScreenX(wp1.x);
+                    const y1 = toScreenY(wp1.y);
+                    const x2 = toScreenX(wp2.x);
+                    const y2 = toScreenY(wp2.y);
+
+                    const isVerticalShift = Math.abs(wp2.y - wp1.y) > 0.01 && Math.abs(wp2.x - wp1.x) < 0.01;
+                    const isReturnRow = !isVerticalShift && (wp2.x < wp1.x);
+
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.moveTo(x1, y1);
+                    ctx.lineTo(x2, y2);
+
+                    if (isVerticalShift) {
+                        ctx.strokeStyle = 'rgba(251, 191, 36, 0.9)';
+                        ctx.lineWidth = 2.5;
+                        ctx.setLineDash([5, 4]);
+                    } else if (isReturnRow) {
+                        ctx.strokeStyle = 'rgba(52, 211, 153, 0.65)';
+                        ctx.lineWidth = 2;
+                    } else {
+                        ctx.strokeStyle = 'rgba(148, 163, 184, 0.45)';
+                        ctx.lineWidth = 2;
+                    }
+                    ctx.stroke();
+
+                    const midX = (x1 + x2) / 2;
+                    const midY = (y1 + y2) / 2;
+                    const angle = Math.atan2(y2 - y1, x2 - x1);
+                    drawArrowHead(ctx, midX, midY, angle, isVerticalShift ? '#fbbf24' : (isReturnRow ? '#34d399' : 'rgba(148, 163, 184, 0.75)'));
+                    ctx.restore();
+                }
+            }
+
+            // 4. Draw Planting Spots
+            const showPreviewPlanted = !state.isSimulating && !state.simFinished && state.plantedSet.size === 0;
+            const nodeRadius = Math.max(4.5, Math.min(7.5, scale * 6.5));
+
+            state.nodes.forEach((node) => {
+                const sx = toScreenX(node.x);
+                const sy = toScreenY(node.y);
+                const isPlanted = (showPreviewPlanted && node.isTarget) || state.plantedSet.has(node.id);
+
+                ctx.save();
+                if (!node.isTarget) {
+                    ctx.beginPath();
+                    ctx.arc(sx, sy, nodeRadius - 1.5, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(148, 163, 184, 0.14)';
+                    ctx.fill();
+                    ctx.strokeStyle = 'rgba(148, 163, 184, 0.25)';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                } else if (isPlanted) {
+                    if (state.waterPerPlantMl > 0) {
+                        ctx.beginPath();
+                        ctx.arc(sx, sy, nodeRadius + 5.5, 0, Math.PI * 2);
+                        ctx.fillStyle = 'rgba(56, 189, 248, 0.22)';
+                        ctx.fill();
+                    }
+
+                    ctx.beginPath();
+                    ctx.arc(sx, sy, nodeRadius + 2.5, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(16, 185, 129, 0.28)';
+                    ctx.fill();
+
+                    ctx.beginPath();
+                    ctx.arc(sx, sy, nodeRadius, 0, Math.PI * 2);
+                    ctx.fillStyle = '#10b981';
+                    ctx.fill();
+                    ctx.lineWidth = 1.5;
+                    ctx.strokeStyle = state.waterPerPlantMl > 0 ? '#bae6fd' : '#ecfdf5';
+                    ctx.stroke();
+                } else {
+                    ctx.beginPath();
+                    ctx.arc(sx, sy, nodeRadius - 0.5, 0, Math.PI * 2);
+                    ctx.strokeStyle = 'rgba(52, 211, 153, 0.65)';
+                    ctx.lineWidth = 1.5;
+                    ctx.setLineDash([2.5, 2.5]);
+                    ctx.stroke();
+                }
+                ctx.restore();
+            });
+
+            // 5. Draw Start & Target Stop Badges
+            if (state.waypoints.length > 0) {
+                const startWp = state.waypoints[0];
+                const sx = toScreenX(startWp.x);
+                const sy = toScreenY(startWp.y);
+
+                ctx.save();
+                ctx.fillStyle = '#38bdf8';
+                ctx.font = 'bold 10px Inter, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('START', sx, sy - nodeRadius - 9);
+                ctx.restore();
+
+                const plantWaypoints = state.waypoints.filter(w => w.isPlantSpot);
+                if (plantWaypoints.length > 0) {
+                    const endWp = plantWaypoints[plantWaypoints.length - 1];
+                    const ex = toScreenX(endWp.x);
+                    const ey = toScreenY(endWp.y);
+                    ctx.save();
+                    ctx.fillStyle = '#fbbf24';
+                    ctx.font = 'bold 10px Inter, sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(`STOP #${endWp.seq}`, ex, ey + nodeRadius + 14);
+                    ctx.restore();
+                }
+            }
+
+            // 6. Draw AGNOWA Rover
+            if (state.waypoints.length > 0) {
+                const rx = toScreenX(state.robotX);
+                const ry = toScreenY(state.robotY);
+
+                if (state.isWateringNow) {
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.arc(rx, ry, 22, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(14, 165, 233, 0.25)';
+                    ctx.fill();
+                    ctx.strokeStyle = '#38bdf8';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    ctx.restore();
+                }
+
+                drawAgnowaRobot(ctx, rx, ry, state.robotAngle);
+            }
+        }
+
+        function drawArrowHead(ctx, x, y, angle, color) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(angle);
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.moveTo(4, 0);
+            ctx.lineTo(-3, -3);
+            ctx.lineTo(-3, 3);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+        }
+
+        function drawAgnowaRobot(ctx, x, y, angle) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(angle);
+
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+            ctx.beginPath();
+            ctx.roundRect(-14, -10, 28, 22, 5);
+            ctx.fill();
+
+            ctx.fillStyle = '#1e293b';
+            ctx.strokeStyle = '#64748b';
+            ctx.lineWidth = 1;
+            const wheels = [
+                [-11, -13, 8, 3],
+                [3, -13, 8, 3],
+                [-11, 10, 8, 3],
+                [3, 10, 8, 3]
+            ];
+            wheels.forEach(([wx, wy, ww, wh]) => {
+                ctx.fillRect(wx, wy, ww, wh);
+                ctx.strokeRect(wx, wy, ww, wh);
+            });
+
+            ctx.fillStyle = '#ffffff';
+            ctx.strokeStyle = '#10b981';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.roundRect(-13, -10, 26, 20, 5);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#10b981';
+            ctx.beginPath();
+            ctx.roundRect(-6, -6, 12, 12, 3);
+            ctx.fill();
+
+            ctx.fillStyle = '#fbbf24';
+            ctx.beginPath();
+            ctx.arc(10, 0, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+        }
+    </script>
+</body>
+</html>
